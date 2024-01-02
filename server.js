@@ -1,18 +1,28 @@
 const express = require("express");
+const axios = require("axios");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const fs = require("fs")
 
 const app = express();
-const fs = require('fs');
+
+app.use(bodyParser.json());
+app.use(cors());
+
 const PORT = 4000;
-const idList = [259919050,259919051,259919052,259919053,259919054,259919055,259919056,259919057,259919058,259919059,259919060,259919061,259919062,259919063,259919064,259919065,259919066,259919067,259919068,259919069,259919070,259919071,259919072,259919073,259919074,259919075,259919076,259919077,259919078,259919079,259919080,259919081,259919082,259919083,259919084,259919085,259919086,259919087,259919088,259919089,259919090,259919091,259919092,259919093,259919094,259919095,259919096,259919097,259919098,259919099,259919100,259919101,259919102,259919103,259919104,259919105,259919106,259919107,259919108,259919109,259919110,259919111,259919112,259919113,259919114,259919115,259919116,259919117,259919118,259919119,259919120,259919121,259919616,259919617,259919618,259919619,259919620,259919621,259919622,259919623,259919624,259919625,259920281,259920282,259920283,259920284,259920285,259920286,259920287,259920288,259920289,259920290,259920291,259920292,259920293,259920294,259920295,259920296,259920297,259920298,259920299,259920300,259920301,259920302,259920303,259920304,259920305,259920306,259920307,259920308,259920309,259920310,259920311,259920312,259920313,259920314,259920315,259920316,259920317,259920318,259920319,259920320,259920321,259920322,259920323,259920324,259920325,259920326,259920327,259920328,259920329,259920330,259920331,259920332,259920333,259920334,259920335,259920336,259920337,259920338,259920339,259920340,259920341,259920342,259920343
-]
+const idList = [
+  262158265,262159243,262158266,262158267,262158268,262158269,262158270,262158271,262159244,262158272,262158273,262158274,262158275,262159245,262158276,262158277,262159246,262158278,262158279,262158280,262159247,262158281,262158282,262158283,262159248,262159249,262158284,262159250,262158285,262158286,262158287,262159251,262158288,262159256,262159257,262159258,262159259,262159260,262158499,262158500,262158501,262158502,262158503,262158504,262158505,262158506,262158507,262158508,262159262,262159263,262159264,262159265,262159266,262159267,262159268,262159269,262159270,262159271,262159272,262159273,262159274,262159275,262159276,262159277,262159278,262159279,262159280,262159281,262159282,262159283,262159284,262159285,262159286,262159287,262159288,262159289,262159290,262159291,262159292,262159293,262159294,262159295,262159296,262159297,262159298,262158221,262158222,262158223,262158224,262158225,262158226,262158227,262158228,262158229,262158230,262158231,262158232,262158233,262158234,262158235,262158236,262158237,262158238,262158239,262158240,262158241,262158242,262158289,262158290,262158291,262159252,262159253,262159254,262158243,262158244,262158245,262158246,262158247,262158248,262158249,262158250,262158251,262158252,262158253,262158254,262158255,262158256,262158257,262158258,262158259,262158260,262158261,262159261,262158292,262159239,262159240,262159299,262159255,262159241,262158262,262158263,262159300,262158264,262159242,262159301
+
+];
+
 app.listen(PORT, () => console.log("Listening on port 4000"));
 
-var myHeaders = new Headers();
+const myHeaders = new Headers();
 myHeaders.append("content", "application/x-www-form-urlencoded");
 myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
 myHeaders.append(
   "Authorization",
-  "Bearer gAAAAFlwlMOM6hUXkBg-PQQFSPULBSPdSvVxTUzr3rzkfPMOctzUVyK1aX_xb1BCUCfRyo9Kx6f0egQbRe_IbeKg1uDxLzPtace358y6Vh5EKuch8eOBZfriViO1K9MBCM2kC6ikx-1Ya7mSQuYWYDwHEJmc9KQnTnc73B_blITG9_fQpAEAAIAAAAB3wRRMqnKOuARGro5miIj7YFJNbeNF5xtzSwwOLHFrlkp0brCAJsCN3NvDB4A4RW-F8CJ_OvTqXpOLwPVwptb6X49dQ2JqtNUKaRLCJv6WLr4MjruaI2U-PpJDt_eWc4kbPm4t1ktJFcEanliRs452DE9Ea8bJYcJjGECuPYAiLpm_kET1HfLrDUQbVxN_OESfXCIuoKTo7YnTuxlM3LqpJLlaGx54C5Fpjipb10_Wowjiwa_j9d7jdtZUvlGP4ZZLfWtJ-_QU7U6jb-evt3aZ6Y2XxC0d2mSJzylFn1u4Ctc5D_H6ddciNFZ9S7QBfips2vcq7PvJoZ4XA8SaC7Pwd3dmw4qXv4y3oV7mWEHjDMGQRJuCVrvZDeblYMydNy8c3r5NxdulfO_Im64kcQveUnQ2e6em56-4KdF8xa9XPCNxY9DBr-7InjNfOnr_9FIDpKzYBivNvLUAMGd_2Xn0x6izUi8sx-r3kNuhc8XPX_PWM0x9WcRNX09aYs18WRKO-ES8YpQbXnhbhndAj2_oX7wymXrRzMrhn2LY98bnWQ"
+  "Bearer gAAAAH2o6B8MaLQwe0fRUtI_KzWo6dcVqknpx8r4K41Sa4KihyQiGwhaTYxRSPYB8fxZT13ZtfxwTE_IxsGfWWa-IJYpvls4sIH-iRiao609JqAio-qg_PyoHe8x53tFkXlDAo6LSfW8_GOGp1MPibfyg5PzKUf4L5cZYfnu34BFKJZjpAEAAIAAAAAK-3tyZLE4fYri-BP7Tr8cs6OOcTkf9xYjMQFGHYiMeefUhw_-hcp3rzrs6eKi9dCpzeX9rQgnDaZgJ76ifYFPVhvK5w0VhG1FDQUEAtJTRX92s1EA4xnI9qeMqcfoZt8VqkUJxODMqzYEJ0WbrfcFz1ALks5yVBUdaUbhwOAC9PHOQl_GP2QwE6wJEDEWDpUeGfF2ybkW6dj7I6MPfWS1ETdQVlKUTl9WbVBXOYfK_XJGRm3ZLIpgnAlJTlj-m4pvAeXL1Ekk-yDAy4FS01xGg8tbJfr4pS87Xx127WrTy-Q5vYw-JGwlx6MavnTS7p4KABixM7UNhi5Vjo2ngCUJNI9gyKqlk3pKZu93ZEB9ThImAyXLzOCySeGBKgAa_wDUBsLD-QjRWIBgrJ4PzIH-11CDlsddh8xtJINtpOe7RxAycE-GjZ6i5IVN8sVxQ77IdjHy6vyU-Loq7lKW2YHdR5VvUGIi3QkCsFtBm8_bgBu6l10dY3iQQDQTfrweTn5r9f1yJtVrs0qtOzWM2ZjbVvYiJ1-Zs0nhNAritol_Kw"
 );
 myHeaders.append(
   "Cookie",
@@ -22,28 +32,85 @@ myHeaders.append(
 var urlencoded = new URLSearchParams();
 urlencoded.append(
   "refresh_token",
-  "fVOr!IAAAAAg15zgoNM6SJqSwTrYcC_F-XoXv-KTCan9MUBXYrImS8QAAAAH3VAuGmV8mu8HYKUY1nOQUs-ucen-j6RsAalTIlozZ_wlTERH0QdWojxzQ0nG4vaGFyWH03Ttz5lH4ICh4PFJZvc3qqiWroW414V0xMEA5CSrQ01xaola3QRZ5kOeljr_vmQaNTjnZk9FGSWgOJnPvAQ-e7txzCPirFfo0xUr6grbC5rwuuWUi9wnvbxp3KtR4lpdgs-R_Or_EUZ5biz1ZqrTmavG0d9q7UKr4qLuzNr3FGrlDicn2roOMP2dgl8tlb3riF8ZcdZcl3IKAfhCWoBsHy8Y0O019O65P45YZkC3M7rG3_YVJ1AdHTOOz_yU"
+  "ZXgh!IAAAAAoYef40U00WWWtvzmqMQxRovmbfhFr3AaWn2zreuNHm8QAAAAHMuwjHHNp7tcXX5uRH73C388t1wEyMr0hWoDjJuh9MD9qxajVHukLoXKy6ZsEGsG4U89170kVxewJSMgjxbSvENK_q4-rpoblsYN7g2ipohXFlU3OKjS7cjosKeW7WixyhWGqrrhzB8mYJTNxm5VeZR5ArIiB5M0kceCIjZKJ7sowTJGRIadppJnr8lKAetD1XQdnL1Gw9EytTDiZSNs25gp5kV8w5r_38XSoXS2qlKg3QQ78U8sclVQeanVVkaEabLamwZqlWNPw1pwNIRTvQvRWlco8bHVVKt-ij1onMGM_Bx41Mi5TCWT7SepNrRf4"
 );
 urlencoded.append("grant_type", "refresh_token");
 
 var requestOptions = {
-  method: "GET",
   headers: myHeaders,
-  redirect: "follow",
 };
 
+// PUT endpoint to update status for multiple objects
+app.put("/update_status", async (req, res) => {
+  const baseUrl = `https://api.servicechannel.com/v3/workorders`; // Update with the base URL
+
+  const objectIds = req.body.object_ids;
+
+  if (!objectIds || !Array.isArray(objectIds) || objectIds.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "Invalid object_ids in the request body" });
+  }
+
+  const requestOptions = {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization:
+        "Bearer gAAAABcT08FN6ruan77-trXaZ9WYPEEKULx7c21namnUtHM3sMuW1jfWfXFdB4AiS_NlTmIOJPGJi0eHHX5kQyBzAy5W5KoTk7dD5K1kEzNYfw6BbC1BmjYiNq0Mj2NA8G36zy6_hYZZWgDLMXHkhFP-dOTDZHHcUS5eHsCTcPaEmXW6pAEAAIAAAAA18BtgHd5VJKiT03y8kt8uf_hGXgCUeupreFMjrrZ7br0VaU9BjtFaHNZTt1faVJ_cSmWWtv3AvPPWN_4asL5BZ8Swt7o7vGnZFyL7Df0LmZ3vJX9GItsy4nmMCGNtQ3oPh3cnC0oozlZ5usbWAABtR12ZyFUZeqyD6tb2nvnoUUEiFBw0WOv7XC_IbjYXDkAPrskcY1Dk8bMc6TU9mWVGRF4mCC-o9FryXwpb80KUKr-SKxekkbDFSkwaJQjoFMr7vHvlozKPmsarWdM4f--E-OquNJ0LWPTyJN2nrwWPOY5MZSjX7CZFQwm6RuLLF6nergmhTfNmoSlfV8pxO30Rjn5fPfcyGH7-lev0PHzifP2RfaAvV2GAoHFSCZHcVhkdnstraNtNOtycOU4SYOtJDHxn4qUOT836FqjbcLmitebddRqckkXFguv189NklXVhwP-OTCqjG0Oc2VU8Wzp8v8a0WqEGAjZROTdKiqZcI5cVqLwBmPcLC6ejsGiQLZNu9mxHkWuQU7i-iEH5uscH01O2OjP5yGWlmRIGOpHqXw", // Update with your actual access token
+    },
+  };
+
+  const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const promises = objectIds.map(async (objectId, index) => {
+    const data = {
+      Status: {
+        Primary: "COMPLETED",
+        Extended: "PENDING CONFIRMATION", // Example extended status, update as needed
+      },
+      Note: `done.`,
+    };
+
+    // Add a delay of 0.5 seconds between requests
+    if (index > 0) {
+      await delay(500);
+    }
+
+    try {
+      const response = await axios.put(
+        `${baseUrl}/${objectId}/status`,
+        data,
+        requestOptions
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error updating status for Object ID ${objectId}: ${error.message}`
+      );
+      return { error: `Error updating status for Object ID ${objectId}` };
+    }
+  });
+
+  try {
+    const responses = await Promise.all(promises);
+    res.status(200).json(responses);
+  } catch (error) {
+    console.error(`Error making external PUT requests: ${error.message}`);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 // Function to fetch data for a given ID
 async function fetchDataById(id) {
     const apiUrl = `https://api.servicechannel.com/v3/workorders/${id}/notes?paging=1%3A9999`;
-    
+
     try {
       const response = await fetch(apiUrl, requestOptions);
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
-  
+
       const data = await response.json();
       return data; // Assuming the response is a JSON array
     } catch (error) {
@@ -51,34 +118,210 @@ async function fetchDataById(id) {
       return null;
     }
   }
-  
 
  // Function to process data for a list of IDs and count occurrences (limited to 30 iterations)
 async function countOccurrencesForIdList(idList) {
     for (const id of idList) {
       const jsonArray = await fetchDataById(id);
-  
+
       if (jsonArray && Array.isArray(jsonArray.Notes)) {
         let occurrences = 0;
-  
+
         for (const note of jsonArray.Notes) {
           const noteDataValue = note.NoteData;
-  
+
           // Check if noteDataValue contains a specific set of text
           if (noteDataValue && noteDataValue.includes('to <b>IN PROGRESS/ON SITE</b>.')) {
             occurrences += 1;
           }
         }
-  
+
         // Log the number of occurrences for the current ID
         console.log(`ID: ${id}, Occurrences: ${occurrences}`);
       }
     }
   }
-  
-  
+
   // Call the function
   countOccurrencesForIdList(idList)
     .catch(error => {
       console.error('Error counting occurrences:', error);
     });
+
+// // Snow Logs Fetch
+
+// const accessToken =
+//   "gAAAABtOLCJG8V1M5qiWgcZukkSAmjGMlv4b6QgABxS8_GhL0MUNAEBgS_M-7YO5_M0QrZTWJnnT5heaHMGhuo5ispOrljUfvdrCuwyitgiFhnpZSRxHFFfVNy5KmFUiviudsbHzIsCeRtsnc_G99_FA-7nM7Sy2JUdb6B5K5BhLZf-3pAEAAIAAAACEMD0AEmyc6OrKFxlVmZI8LQNBGum_is_u_Q17WH2bQnXADgwYnOuxx16JnCTb3UpT2fiFmsyaZrpZH7lD8tSid3Yd9QPsl4ZgpmeXlRKDLpB__aH9L5dhOR-xCcCh9nM-qgUPFQCKYeYMsGHVFhjOv_ZivMdejjGIu7CAR0tO29HbFJMkprfMktjfmGzZPQK6LpHYH30YLkj1rqUyjS9bApoCcZ7tsY0erBRaEsRlm1O25X7BlbqZu6FszjHu2rC_OrkWwb3axQwMIX6XTc1BFfkK67afz4jufrfZKsGok8yUq1ymzOeEImSDEd9UreR1TYUS-2JFuxvOT_4QGRs5JC1hj6wzxzvebnES7Kz_dYnn5gFDRKdfDEFKrfwLJbaVCWcLB1RwhPJxN198foQsFbOOqvcN8iduVyDBfVJC2cHBQ7p2AM3wUcAMhy1P6b1fX5jjnKG1fmp0hX0rR5ejDsHFbLTuJRlraxQfJdkcFgPniiJSBZTyR0OXHJwffPTYPwGhNZHYZmj-cI4M0V8-TK6xZj6O1Wt8o5mOfCsp2A"; // Update with your actual access token
+// const apiUrl = "https://api.servicechannel.com/v3/workorders";
+// // Function to fetch data for a given ID
+// async function fetchDataFromApi(workOrderNumber) {
+//   const apiUrl = `https://api.servicechannel.com/v3/workorders/${workOrderNumber}`;
+//   const requestOptions = {
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${accessToken}`,
+//     },
+//   };
+
+//   try {
+//     const response = await fetch(apiUrl, requestOptions);
+
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! Status: ${response.status}`);
+//     }
+
+//     return await response.json();
+//   } catch (error) {
+//     console.error(
+//       `Error fetching data from the API for work order ${workOrderNumber}:`,
+//       error
+//     );
+//     return null;
+//   }
+// }
+
+// // Function to fetch store information by LocationId
+// async function fetchStoreInfoByLocationId(locationId) {
+//   const apiUrl = `https://api.servicechannel.com/v3/locations/${locationId}`;
+//   const requestOptions = {
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization:
+//         "Bearer gAAAABtOLCJG8V1M5qiWgcZukkSAmjGMlv4b6QgABxS8_GhL0MUNAEBgS_M-7YO5_M0QrZTWJnnT5heaHMGhuo5ispOrljUfvdrCuwyitgiFhnpZSRxHFFfVNy5KmFUiviudsbHzIsCeRtsnc_G99_FA-7nM7Sy2JUdb6B5K5BhLZf-3pAEAAIAAAACEMD0AEmyc6OrKFxlVmZI8LQNBGum_is_u_Q17WH2bQnXADgwYnOuxx16JnCTb3UpT2fiFmsyaZrpZH7lD8tSid3Yd9QPsl4ZgpmeXlRKDLpB__aH9L5dhOR-xCcCh9nM-qgUPFQCKYeYMsGHVFhjOv_ZivMdejjGIu7CAR0tO29HbFJMkprfMktjfmGzZPQK6LpHYH30YLkj1rqUyjS9bApoCcZ7tsY0erBRaEsRlm1O25X7BlbqZu6FszjHu2rC_OrkWwb3axQwMIX6XTc1BFfkK67afz4jufrfZKsGok8yUq1ymzOeEImSDEd9UreR1TYUS-2JFuxvOT_4QGRs5JC1hj6wzxzvebnES7Kz_dYnn5gFDRKdfDEFKrfwLJbaVCWcLB1RwhPJxN198foQsFbOOqvcN8iduVyDBfVJC2cHBQ7p2AM3wUcAMhy1P6b1fX5jjnKG1fmp0hX0rR5ejDsHFbLTuJRlraxQfJdkcFgPniiJSBZTyR0OXHJwffPTYPwGhNZHYZmj-cI4M0V8-TK6xZj6O1Wt8o5mOfCsp2A", // Update with your actual access token
+//     },
+//   };
+
+//   try {
+//     const response = await fetch(apiUrl, requestOptions);
+//     ;
+//     if (!response.ok) {
+//       throw new Error(`HTTP error! Status: ${response.status}`);
+//     }
+
+//     const data = await response.json();
+//     return data;
+//   } catch (error) {
+//     console.error(
+//       `Error fetching store info for LocationId ${locationId}:`,
+//       error
+//     );
+//     return null;
+//   }
+// }
+
+// // Function to process data for a list of work orders and extract specific properties
+// async function extractDataForWorkOrders(workOrderNumbers) {
+//   const extractedData = [];
+
+//   for (const workOrderNumber of workOrderNumbers) {
+//     try {
+//       const apiObject = await fetchDataFromApi(workOrderNumber);
+//       if (!apiObject) {
+//         console.warn(
+//           `Work order with number ${workOrderNumber} not found in the API response.`
+//         );
+//         continue;
+//       }
+
+//       // Fetch store information using LocationId from apiObject
+//       const locationId = apiObject.Location.Id;
+//       const storeInfo = await fetchStoreInfoByLocationId(locationId);
+
+//       const extractedItem = extractProperties(apiObject, storeInfo);
+
+//       extractedData.push(extractedItem);
+//     } catch (error) {
+//       console.error(
+//         `Error fetching and processing data for work order ${workOrderNumber}:`,
+//         error
+//       );
+//     }
+//   }
+
+//   return extractedData;
+// }
+
+// // Helper function to extract specific properties from the API response
+// function extractProperties(matchingItem, storeInfo) {
+//   const createdAt = matchingItem.CallDate
+//     ? new Date(matchingItem.CallDate)
+//     : null;
+
+//   const formattedDate = createdAt
+//     ? createdAt.toLocaleDateString()
+//     : "N/A";
+
+//   const formattedTime = createdAt
+//     ? createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+//     : "N/A";
+
+//   const ampm = createdAt
+//     ? createdAt.toLocaleTimeString([], { hour12: true }).split(' ')[1]
+//     : "N/A";
+
+//     const problemDescription = matchingItem.Description || "N/A";
+//     const problemDescriptionParts = problemDescription.split(/NO \/|YES \/|N \/|Y \//);
+
+//   return {
+//     Date: formattedDate,
+//     Time: formattedTime,
+//     AMPM: ampm,
+//     Subscriber: matchingItem.Subscriber?.Name,
+//     StoreId: matchingItem.Location.StoreId,
+//     LocationCity: storeInfo?.City || "N/A",
+//     LocationState: storeInfo?.State || "N/A",
+//     WorkOrderNumber: matchingItem.Number || "N/A",
+//     ProblemDescription:
+//       problemDescriptionParts.length > 1
+//         ? problemDescriptionParts[1].trim()
+//         : "N/A",
+//     Resolution: matchingItem.Resolution,
+//     Caller: matchingItem.Caller || "N/A",
+
+//     // Add more properties as needed
+//   };
+// }
+
+// // Function to convert data to CSV format and write to a file
+// function convertToCSVAndWriteToFile(data, fileName) {
+//   const header = Object.keys(data[0]).join(",");
+//   const rows = data.map((item) =>
+//     Object.values(item)
+//       .map((value) => `"${value}"`)
+//       .join(",")
+//   );
+//   const csvContent = `${header}\n${rows.join("\n")}`;
+
+//   fs.writeFileSync(fileName, csvContent, 'utf8');
+// }
+
+// // Function to fetch data for a list of work orders and log the result
+// async function fetchDataFromApiForWorkOrders() {
+//   const workOrderNumbers = [
+//     260400901,260604481,260607746,261238367,261249844,261267034,261325525,261398217,262213017,262217492,262217923,262269838,262501261,262547273,262553934,262589960,262595126,262595169,262595275,262602113,262647083,262647990,262672314,262674971,262676648,262685137,262686304,262694799,263227848,263313475,263314264,263317797,263392754,263392913,263393129,263393599,263394025,263394992,263441372,263442910,263445679,263471570,263471796,263472324,263472406,263472627,263481565,263525505,263704167,263708130,263753859,263754121,263756236,263756833,263899441,263902477,263905757,263928670,263928730,264098472,264317658,264320974,264323167,264385153,264622255,264667483,264673919,264695224,264695660,264695806,264696282,264696303,264772444,264772631
+
+
+//     /* ... add more work order numbers ... */,
+//   ]; // Your array of work order numbers
+
+//   try {
+//     const extractedData = await extractDataForWorkOrders(workOrderNumbers);
+//     console.log(extractedData);
+
+//     // Specify the file name (e.g., output.csv)
+//     const fileName = 'output.csv';
+    
+//     // Convert data to CSV format and write to file
+//     convertToCSVAndWriteToFile(extractedData, fileName);
+
+//     console.log(`CSV data has been written to ${fileName}`);
+//   } catch (error) {
+//     console.error("Error fetching and processing data:", error);
+//   }
+// }
+
+// // Call the main function to fetch data for a list of work orders
+
+
+// // Call the main function to fetch data for a list of work orders
+// fetchDataFromApiForWorkOrders();

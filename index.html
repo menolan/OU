@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Status Form</title>
+</head>
+<body>
+    <h1>Update Status</h1>
+
+    <form id="updateStatusForm">
+        <label for="objectIds">Object IDs (comma-separated):</label>
+        <input type="text" id="objectIds" name="objectIds" required>
+        
+
+        <button type="button" onclick="submitForm()">Update Status</button>
+    </form>
+
+    <div id="response"></div>
+
+    <script>
+        function submitForm() {
+            const objectIdsInput = document.getElementById('objectIds');
+            
+            const objectIds = objectIdsInput.value.split(',').map(id => id.trim(), 10);
+
+            const requestData = {
+                object_ids: objectIds,
+            };
+
+            fetch('http://localhost:4000/update_status', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('response').innerHTML = `<p>Response: ${JSON.stringify(data)}</p>`;
+            })
+            .catch(error => {
+                document.getElementById('response').innerHTML = `<p>Error: ${error.message}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>
