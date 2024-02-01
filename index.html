@@ -1,48 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Update Status Form</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Update Status</h1>
 
     <form id="updateStatusForm">
-        <label for="objectIds">Object IDs (comma-separated):</label>
-        <input type="text" id="objectIds" name="objectIds" required>
-        
+      <label for="statusIds">Work Order IDs (comma-separated):</label>
+      <input type="text" id="statusIds" name="statusIds" required />
 
-        <button type="button" onclick="submitForm()">Update Status</button>
+      <button type="button" onclick="submitForm()">Update Status</button>
     </form>
 
     <div id="response"></div>
 
+    <h1>Check In</h1>
+
+    <form id="checkInForm">
+      <label for="checkInIds">Work Order IDs (comma-separated):</label>
+      <input type="text" id="checkInIds" name="checkInIds" required />
+
+      <button type="button" onclick="submitCheckIn()">Check In</button>
+    </form>
+
+    <h1>Check Out</h1>
+
+    <form id="checkOutForm">
+      <label for="checkOutIds">Work Order IDs (comma-separated):</label>
+      <input type="text" id="checkOutIds" name="checkOutIds" required />
+
+      <button type="button" onclick="submitCheckOut()">Check Out</button>
+    </form>
+
+    <div id="response"></div>
+
+    <h1>Work Order Occurrences Checker</h1>
+
+    <form id="workOrderForm">
+      <label for="workOrderInput"
+        >Enter Work Order Numbers (comma-separated):</label
+      >
+      <input type="text" id="workOrderInput" required />
+      <button type="button" onclick="checkOccurrences()">
+        Check Occurrences
+      </button>
+    </form>
+
+    <div id="result"></div>
+
+    <h2>Add Resolution to Multiple Work Orders</h2>
+    <form id="resolutionForm">
+      <label for="workOrderIds"
+        >Work Order IDs (comma or space-separated):</label
+      >
+      <input type="text" id="workOrderIds" name="workOrderIds" required />
+      <button type="submit">Submit Resolutions</button>
+    </form>
+
     <script>
-        function submitForm() {
-            const objectIdsInput = document.getElementById('objectIds');
-            
-            const objectIds = objectIdsInput.value.split(',').map(id => id.trim(), 10);
+      function submitForm() {
+        const statusIdsInput = document.getElementById("statusIds").value
 
-            const requestData = {
-                object_ids: objectIds,
-            };
+        const statusIds = statusIdsInput.split(/[\s,]+/).filter(Boolean);
+    
+        const requestData = {
+          status_ids: statusIds,
+        };
 
-            fetch('http://localhost:4000/update_status', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestData),
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('response').innerHTML = `<p>Response: ${JSON.stringify(data)}</p>`;
-            })
-            .catch(error => {
-                document.getElementById('response').innerHTML = `<p>Error: ${error.message}</p>`;
-            });
+        fetch("http://localhost:4000/update_status", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            document.getElementById(
+              "response"
+            ).innerHTML = `<p>Response: ${JSON.stringify(data)}</p>`;
+          })
+          .catch((error) => {
+            document.getElementById(
+              "response"
+            ).innerHTML = `<p>Error: ${error.message}</p>`;
+          });
+      }
+      function submitCheckIn() {
+        const checkInIdsInput = document.getElementById("checkInIds");
+        const checkInIds = checkInIdsInput.value
+          .split(",")
+          .map((id) => id.trim());
+
+        try {
+          const response = fetch("http://localhost:4000/check_in", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ work_order_ids: checkInIds }),
+          });
+
+          if (response.ok) {
+            const result = response.json();
+            console.log("Check-In Results:", result);
+          } else {
+            console.error("Error performing check-in:", response.statusText);
+          }
+        } catch (error) {
+          console.error("Error performing check-in:", error.message);
         }
+      }
+
+      function submitCheckOut() {
+        const checkOutIdsInput = document.getElementById("checkOutIds");
+        const checkOutIds = checkOutIdsInput.value
+          .split(",")
+          .map((id) => id.trim());
+
+        try {
+          const response = fetch("http://localhost:4000/check_out", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ work_order_ids: checkOutIds }),
+          });
+
+          if (response.ok) {
+            const result = response.json();
+            console.log("Check-out Results:", result);
+          } else {
+            console.error("Error performing check-out:", response.statusText);
+          }
+        } catch (error) {
+          console.error("Error performing check-out:", error.message);
+        }
+      }
+
+      async function checkOccurrences() {
+        const workOrderInput = document.getElementById("workOrderInput");
+        const workOrderNumbers = workOrderInput.value.split(",").map(Number);
+
+        if (workOrderNumbers.some(isNaN)) {
+          alert("Please enter valid numbers separated by commas.");
+          return;
+        }
+        console.log(workOrderInput);
+        console.log(workOrderNumbers);
+        const response = await fetch(
+          "http://localhost:4000/check_occurrences",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ workOrderIds: workOrderNumbers }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          console.error("Error checking occurrences:", error);
+          return;
+        }
+
+        const results = await response.json();
+        displayResults(results);
+      }
+
+      function displayResults(results) {
+        const resultContainer = document.getElementById("result");
+        resultContainer.innerHTML = ""; // Clear previous results
+
+        results.forEach((result) => {
+          const resultMessage = `ID: ${result.id}, Occurrences: ${result.occurrences}`;
+          resultContainer.innerHTML += `<p>${resultMessage}</p>`;
+          console.log(resultMessage);
+        });
+      }
+
+      document.getElementById("resolutionForm").onsubmit = async (e) => {
+        e.preventDefault();
+
+        const workOrderIdsInput = document.getElementById("workOrderIds").value;
+        const workOrderIds = workOrderIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
+
+        try {
+          const response = await fetch("http://localhost:4000/resolution", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workOrderIds }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log("Resolutions added:", result);
+            alert("Resolutions added successfully!");
+          } else {
+            console.error("Failed to add resolutions");
+            alert("Failed to add resolutions.");
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          alert("Error submitting resolutions.");
+        }
+      };
     </script>
-</body>
+  </body>
 </html>
