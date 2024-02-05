@@ -59,13 +59,49 @@
       <input type="text" id="workOrderIds" name="workOrderIds" required />
       <button type="submit">Submit Resolutions</button>
     </form>
+    <h1>Check-In Status</h1>
+    <form id="missedDaysForm">
+      <label for="missedDaysIds">Work Order IDs:</label>
+      <input
+        type="text"
+        id="missedDaysIds"
+        name="missedDaysIds"
+        required
+      /><br /><br />
 
+      <label>Days of the Week for Check-In:</label><br />
+      <input type="checkbox" id="sunday" name="daysOfWeek" value=0 />
+      <label for="sunday">Sunday</label><br />
+      <input type="checkbox" id="monday" name="daysOfWeek" value=1 />
+      <label for="monday">Monday</label><br />
+      <input type="checkbox" id="tuesday" name="daysOfWeek" value=2 />
+      <label for="tuesday">Tuesday</label><br />
+      <input
+        type="checkbox"
+        id="wednesday"
+        name="daysOfWeek"
+        value=3
+      />
+      <label for="wednesday">Wednesday</label><br />
+      <input type="checkbox" id="thursday" name="daysOfWeek" value=4 />
+      <label for="thursday">Thursday</label><br />
+      <input type="checkbox" id="friday" name="daysOfWeek" value=5 />
+      <label for="friday">Friday</label><br />
+      <input type="checkbox" id="saturday" name="daysOfWeek" value=6 />
+      <label for="saturday">Saturday</label><br /><br />
+
+      <button type="button" onclick="checkMissedCheckIns()">
+        Check Missed Check-Ins
+      </button>
+    </form>
+
+    <div id="result"></div>
     <script>
       function submitForm() {
-        const statusIdsInput = document.getElementById("statusIds").value
+        const statusIdsInput = document.getElementById("statusIds").value;
 
         const statusIds = statusIdsInput.split(/[\s,]+/).filter(Boolean);
-    
+
         const requestData = {
           status_ids: statusIds,
         };
@@ -209,6 +245,57 @@
           alert("Error submitting resolutions.");
         }
       };
+
+      async function checkMissedCheckIns() {
+        const missedDaysIdsInput =
+          document.getElementById("missedDaysIds").value;
+        const daysOfWeekCheckboxes = document.querySelectorAll(
+          'input[name="daysOfWeek"]:checked'
+        );
+        const daysOfWeek = Array.from(daysOfWeekCheckboxes).map(
+          (checkbox) => checkbox.value
+        );
+
+        // Convert work order IDs to an array
+        const missedDaysIds = missedDaysIdsInput
+          .split(/[\s,]+/)
+          .filter(Boolean);
+
+        // Create a JSON object with the selected options
+        const requestData = {
+          missedDaysIds,
+          daysOfWeek,
+        };
+        console.log(missedDaysIds,daysOfWeek)
+        // Send the JSON object to the server using fetch or AJAX
+        // You can use fetch to send a POST request to your server
+        try {
+          const response = await fetch("http://localhost:4000/days_missed", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestData),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            
+            alert("Missed days found!");
+          } else {
+            console.error("Failed to get missed days");
+            alert("Failed to get missed days.");
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          alert("Error getting missed days.");
+        }
+      }
+
+      // Display the result on the page
+      
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerHTML = JSON.stringify(result, null, 2);
     </script>
   </body>
 </html>

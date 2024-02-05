@@ -25,4 +25,3 @@ const getData = async (workOrderId, accessToken) => {
 
 module.exports = { getData };
 
-module.exports = { getData };

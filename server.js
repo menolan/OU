@@ -10,6 +10,7 @@ const { getAccessToken } = require("./Auth/getAccessToken.js");
 const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
+const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
 
 const app = express();
 
@@ -154,13 +155,14 @@ const processInChunks = async (
   processFunction,
   accessToken,
   chunkSize,
-  delay
+  delay,
+  daysOfWeek
 ) => {
   let results = [];
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(
-      chunk.map((item) => processFunction(item, accessToken))
+      chunk.map((item) => processFunction(item, daysOfWeek, accessToken))
     );
     results = [...results, ...chunkResults];
     if (i + chunkSize < items.length) {
@@ -174,10 +176,16 @@ const processInChunks = async (
 
 // Function to fetch data for a given ID
 async function fetchDataById(id) {
+  const accessToken = await getAccessToken();
   const apiUrl = `https://api.servicechannel.com/v3/workorders/${id}/notes?paging=1%3A9999`;
 
   try {
-    const response = await fetch(apiUrl, requestOptions);
+    const response = await fetch(apiUrl, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP error! Status: ${response.status}, URL: ${apiUrl}`);
@@ -221,8 +229,61 @@ async function countOccurrencesForIdList(idList) {
   return results;
 }
 
-app.use(bodyParser.json());
-// Call the function
+// Handle POST request to check missed check-ins
+app.post("/days_missed", async (req, res) => {
+  try {
+    const accessToken = await getAccessToken();
+    // Extract data from the request body
+    const { missedDaysIds, daysOfWeek } = req.body;
+    console.log(missedDaysIds);
+    const chunkSize = 5; // Process 100 work orders at a time
+    const delay = 1000; // 45 seconds delay between chunks
+    const results = await processInChunks(
+      missedDaysIds,
+      daysMissed,
+      accessToken,
+      chunkSize,
+      delay,
+      daysOfWeek
+    );
+    // Create a new Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Missed Dates");
+
+    // Define the column headers
+    worksheet.columns = [
+      { header: "Work Order Number", key: "workOrderId", width: 20 },
+      { header: "Missed Dates (MM/DD)", key: "missedDates", width: 30 },
+    ];
+
+    // Add data to the worksheet
+    results.forEach((row) => {
+      worksheet.addRow(row);
+    });
+
+    // Generate the Excel file
+    const excelFileName = "missed_dates.xlsx";
+    const filePath = `./${excelFileName}`;
+
+    workbook.xlsx.writeFile(filePath).then(() => {
+      // Send the generated Excel file as a response
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=${excelFileName}`
+      );
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+});
 
 // POST endpoint to check occurrences for a list of work order IDs
 app.post("/check_occurrences", async (req, res) => {
