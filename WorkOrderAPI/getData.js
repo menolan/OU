@@ -1,10 +1,9 @@
 const axios = require("axios");
 
 const getData = async (workOrderId, accessToken) => {
-  console.log("Getting Data Token", accessToken);
   const apiUrl = `https://api.servicechannel.com/v3/workorders/${workOrderId}/GPSRadius`;
-  console.log(workOrderId);
-  console.log(apiUrl);
+  console.log("in get data");
+  
 
   const requestOptions = {
     headers: {

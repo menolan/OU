@@ -2,7 +2,6 @@ const axios = require("axios");
 const { getData } = require("./getData");
 
 const checkOut = async (workOrderId, accessToken) => {
-  console.log("Performing checkout with token:", accessToken);
   const data = await getData(workOrderId, accessToken);
   const baseUrl = "https://api.servicechannel.com/v3/workorders";
   const locLatitude = data.LocLatitude;

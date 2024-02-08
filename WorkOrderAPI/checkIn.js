@@ -5,6 +5,7 @@ const { getData } = require("./getData");
 
 
 const checkIn = async (workOrderId, accessToken) => {
+    console.log("in check in")
       const data = await getData(workOrderId, accessToken);
       const baseUrl = "https://api.servicechannel.com/v3/workorders";
       const locLatitude = data.LocLatitude;

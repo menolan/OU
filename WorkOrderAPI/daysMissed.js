@@ -1,14 +1,27 @@
 const axios = require("axios");
 
+
+
 // Function to count missed days for check-ins for a list of work orders
-async function daysMissed(missedDaysId, daysOfWeek, accessToken) {
-  const daysOfWeekNum = daysOfWeek.map((day) => parseInt(day, 10));
+async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
+  // Ensure daysOfWeekNum is an array of numbers
+  if (!Array.isArray(daysOfWeekNum) || daysOfWeekNum.some(isNaN)) {
+      throw new Error('daysOfWeekNum must be an array of numbers');
+  }
+
+  // Validate missedDaysId and accessToken
+  if (!missedDaysId) {
+      throw new Error('missedDaysId is required');
+  }
+  if (!accessToken) {
+      throw new Error('accessToken is required');
+  }
+
   const workOrderCheckIns = await fetchCheckInsForWorkOrder(
     missedDaysId,
     accessToken
   );
   async function fetchCheckInsForWorkOrder(missedDaysId, accessToken) {
-    console.log("fetching");
     try {
       const response = await axios.get(
         `https://api.servicechannel.com/v3/odata/workorders(${missedDaysId})/Service.CheckInActivity()`,
@@ -30,20 +43,19 @@ async function daysMissed(missedDaysId, daysOfWeek, accessToken) {
       }
     } catch (error) {
       console.error(
-        `Error fetching check-ins for work order ID ${workOrderId}:`,
+        `Error fetching check-ins for work order ID ${missedDaysId}:`,
         error.message
       );
       return [];
     }
   }
-  console.log(workOrderCheckIns, "work order checkins");
-  console.log(daysOfWeekNum, "days of week");
+  
   const dates = getDatesForDaysOfWeek(daysOfWeekNum);
-  console.log(dates, "dates for days of week");
+  
   const checkIns = findCheckIns(workOrderCheckIns);
-  console.log(checkIns, "check in dates");
+  
   const missedCheckIns = findMissedCheckIns(dates, checkIns);
-  console.log(missedCheckIns);
+
   const result = {
     workOrderId: missedDaysId,
     missedDates: missedCheckIns,
