@@ -65,20 +65,19 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
 
 function getDatesForDaysOfWeek(daysOfWeekNum) {
   const currentDate = new Date();
-  const twoMonthsAgo = new Date();
-  twoMonthsAgo.setMonth(currentDate.getMonth() - 2);
+  const startDate = new Date(currentDate.getFullYear(), 0, 29); // January 29th of the current year
 
   const dates = [];
 
-  while (twoMonthsAgo <= currentDate) {
-    if (daysOfWeekNum.includes(twoMonthsAgo.getDay())) {
+  while (startDate <= currentDate) {
+    if (daysOfWeekNum.includes(startDate.getDay())) {
       // Create a date in local time and add it to the list
-      const localDate = new Date(twoMonthsAgo);
+      const localDate = new Date(startDate);
       dates.push(localDate);
     }
 
     // Move to the next day
-    twoMonthsAgo.setDate(twoMonthsAgo.getDate() + 1);
+    startDate.setDate(startDate.getDate() + 1);
   }
 
   return dates;
@@ -89,13 +88,10 @@ function findCheckIns(workOrderCheckIns) {
 
   for (const entry of workOrderCheckIns) {
     if (entry.Action === "Check In") {
-      // Create a date in local time and add it to the list
+      // Use the check-in date directly without timezone adjustment
       const checkInDate = new Date(entry.Date);
-      const localCheckInDate = new Date(
-        checkInDate.getTime() + checkInDate.getTimezoneOffset() * 60000
-      );
       checkIns.push({
-        Date: localCheckInDate,
+        Date: checkInDate,
       });
     }
   }
@@ -124,7 +120,6 @@ function findMissedCheckIns(dates, checkIns) {
       return (
         checkInTime >= priorDayEndTimestamp &&
         checkInTime <= dateStartTimestamp
-       
       );
     });
 
@@ -137,5 +132,4 @@ function findMissedCheckIns(dates, checkIns) {
 
   return missedCheckIns;
 }
-
 module.exports = { daysMissed };
