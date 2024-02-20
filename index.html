@@ -31,7 +31,8 @@
     <form id="checkOutForm">
       <label for="checkOutIds">Work Order IDs (comma-separated):</label>
       <input type="text" id="checkOutIds" name="checkOutIds" required />
-
+      <label for="checkOutTechs">Number of Techs (up to 10):</label>
+      <input type="text" id="checkOutTechs" name="checkOutTechs">
       <button type="button" onclick="submitCheckOut()">Check Out</button>
     </form>
 
@@ -121,6 +122,7 @@
 
       function submitCheckOut() {
         const checkOutIdsInput = document.getElementById("checkOutIds").value;
+        const checkOutTechsInput = document.getElementById("checkOutTechs").value;
         const checkOutIds = checkOutIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
@@ -129,7 +131,7 @@
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ work_order_ids: checkOutIds }),
+            body: JSON.stringify({ work_order_ids: checkOutIds, tech_count: checkOutTechsInput }),
           });
 
           if (response.ok) {

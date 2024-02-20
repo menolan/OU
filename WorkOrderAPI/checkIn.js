@@ -13,7 +13,7 @@ const checkIn = async (workOrderId, accessToken) => {
       const checkInData = {
         WorkTypeId: 1,
         UserId: 296641,
-        TechsCount: 1,
+        
         Latitude: locLatitude,
         Longitude: locLongitude,
       };

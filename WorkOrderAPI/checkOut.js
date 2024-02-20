@@ -1,17 +1,19 @@
 const axios = require("axios");
 const { getData } = require("./getData");
 
-const checkOut = async (workOrderId, accessToken) => {
+const checkOut = async (workOrderId, accessToken, techCount) => {
   const data = await getData(workOrderId, accessToken);
   const baseUrl = "https://api.servicechannel.com/v3/workorders";
+  console.log(techCount)
   const locLatitude = data.LocLatitude;
   const locLongitude = data.LocLongitude;
+  const techs = techCount
   const checkOutData = {
     WorkTypeId: "1",
     PrimaryStatus: "InProgress",
     ExtendedStatus: "Incomplete",
     UserId: 296641,
-    TechsCount: 1,
+    TechsCount: techs,
     Latitude: locLatitude,
     Longitude: locLongitude,
   };

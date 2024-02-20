@@ -125,6 +125,7 @@ app.post("/check_out", async (req, res) => {
     const accessToken = await getAccessToken();
     const workOrderIds = req.body.work_order_ids;
     console.log(workOrderIds);
+    const techCount = req.body.tech_count
     if (
       !workOrderIds ||
       !Array.isArray(workOrderIds) ||
@@ -142,7 +143,8 @@ app.post("/check_out", async (req, res) => {
       checkOut,
       accessToken,
       chunkSize,
-      delay
+      delay,
+      techCount
     );
     res.json(results);
   } catch (error) {
@@ -157,14 +159,15 @@ const processInChunks = async (
   processFunction,
   accessToken,
   chunkSize,
-  delay
+  delay,
+  techCount
 ) => {
   let results = [];
 
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(
-      chunk.map((item) => processFunction(item, accessToken))
+      chunk.map((item) => processFunction(item, accessToken, techCount))
     );
     results = [...results, ...chunkResults];
     if (i + chunkSize < items.length) {
@@ -710,4 +713,4 @@ const delayBetweenChunks = 60000; // 1 minute in milliseconds
 // Call the main function to fetch data in chunks with a delay
 // fetchDataInChunksWithDelay(workOrderNumbers, chunkSize, delayBetweenChunks);
 
-// fetchDataById();
+// fetchDataById();no
