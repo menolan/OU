@@ -17,9 +17,9 @@ const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 
-const PORT = 4000;
+const PORT = process.env.PORT;
 
-app.listen(PORT, () => console.log("Listening on port 4000"));
+app.listen(PORT || 5000, () => console.log("Server started..."));
 
 // PUT endpoint to update status for multiple objects
 app.put("/update_status", async (req, res) => {
