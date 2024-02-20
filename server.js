@@ -714,3 +714,7 @@ const delayBetweenChunks = 60000; // 1 minute in milliseconds
 // fetchDataInChunksWithDelay(workOrderNumbers, chunkSize, delayBetweenChunks);
 
 // fetchDataById();no
+
+app.get("*", (req,res) => {
+  res.sendFile(path.join(__dirname,"index.html"))
+})
