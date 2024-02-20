@@ -76,7 +76,7 @@
           status_ids: statusIds,
         };
 
-        fetch("http://localhost:4000/update_status", {
+        fetch("/update_status", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -101,7 +101,7 @@
         const checkInIds = checkInIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("http://localhost:4000/check_in", {
+          const response = fetch("/check_in", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -126,7 +126,7 @@
         const checkOutIds = checkOutIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("http://localhost:4000/check_out", {
+          const response = fetch("/check_out", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -156,7 +156,7 @@
         console.log(workOrderInput);
         console.log(workOrderNumbers);
         const response = await fetch(
-          "http://localhost:4000/check_occurrences",
+          "/check_occurrences",
           {
             method: "POST",
             headers: {
@@ -194,7 +194,7 @@
         const workOrderIds = workOrderIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = await fetch("http://localhost:4000/resolution", {
+          const response = await fetch("/resolution", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ workOrderIds }),
@@ -216,7 +216,7 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("http://localhost:4000/days_missed", {
+          const response = await fetch("/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
