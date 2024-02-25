@@ -11,7 +11,7 @@ const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
 const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
-const path = require('path');
+const path = require("path");
 
 const app = express();
 
@@ -126,7 +126,7 @@ app.post("/check_out", async (req, res) => {
     const accessToken = await getAccessToken();
     const workOrderIds = req.body.work_order_ids;
     console.log(workOrderIds);
-    const techCount = req.body.tech_count
+    const techCount = req.body.tech_count;
     if (
       !workOrderIds ||
       !Array.isArray(workOrderIds) ||
@@ -211,7 +211,6 @@ const processInChunksSubs = async (
           return processFunction(item.workOrderId, daysOfWeekNum, accessToken);
         })
       );
-
 
       results = [...results, ...chunkResults];
 
@@ -393,62 +392,75 @@ app.post("/check_occurrences", async (req, res) => {
   }
 });
 
-// Auto check in scheduler
-const job = schedule.scheduleJob("0 4 * * 2", async () => {
+// Auto check-in scheduler
+const job = schedule.scheduleJob("0 7 * * 0", async () => {
   const accessToken = await getAccessToken();
 
-  // Replace with the actual work order ID you want to check
-  const workOrderId = 267468264;
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [267468264, 267467838, 267467839, 267467840,267468036]; // Example work order IDs
 
-  // Make an API call to get the work order history
-  const historyResponse = await axios.get(
-    `https://api.servicechannel.com/v3/odata/workorders(267468264)/Service.CheckInActivity()`,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+    // Make an API call to get the work order history
+    const historyResponse = await axios.get(
+      `https://api.servicechannel.com/v3/odata/workorders(${workOrderId})/Service.CheckInActivity()`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
-  const checkInData = historyResponse.value;
+    const checkInData = historyResponse.data.value; // Ensure you access .data before .value
 
-  if (Array.isArray(checkInData) && checkInData.length > 0) {
-    // Find the most recent check-in entry
-    const mostRecentCheckIn = checkInData
-      .filter((entry) => entry.Action === "Check In")
-      .reduce((prev, current) =>
-        new Date(current.Date) > new Date(prev.Date) ? current : prev
-      );
+    if (Array.isArray(checkInData) && checkInData.length > 0) {
+      // Find the most recent check-in entry
+      const mostRecentCheckIn = checkInData
+        .filter((entry) => entry.Action === "Check In")
+        .reduce((prev, current) =>
+          new Date(current.Date) > new Date(prev.Date) ? current : prev
+        );
 
-    // Calculate the time difference in milliseconds
-    const currentTime = new Date();
-    const checkInTime = new Date(mostRecentCheckIn.Date);
-    const timeDifference = currentTime - checkInTime;
+      // Calculate the time difference in milliseconds
+      const currentTime = new Date();
+      const checkInTime = new Date(mostRecentCheckIn.Date);
+      const timeDifference = currentTime - checkInTime;
 
-    // Check if the time difference is greater than 10 hours (in milliseconds)
-    const tenHoursInMilliseconds = 10 * 60 * 60 * 1000;
-    if (timeDifference > tenHoursInMilliseconds) {
-      // Perform the check-in because the most recent check-in was over 10 hours ago
-      console.log("Performing check-in");
-      await checkIn(workOrderId, accessToken);
-      await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds
-      const accessToken = await getAccessToken();
-      await checkOut(workOrderId, accessToken);
+      // Check if the time difference is greater than 10 hours (in milliseconds)
+      const twelveHoursInMilliseconds = 12 * 60 * 60 * 1000;
+      if (timeDifference > twelveHoursInMilliseconds) {
+        // Perform the check-in because the most recent check-in was over 10 hours ago
+        console.log(`Performing check-in for work order ID: ${workOrderId}`);
+        await checkIn(workOrderId, accessToken);
+        await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds, adjust if this was meant to be hours
+        const newAccessToken = await getAccessToken();
+        await checkOut(workOrderId, newAccessToken);
+      } else {
+        // Do not perform the check-in because the most recent check-in was within 10 hours
+        console.log(`Skipping check-in for work order ID: ${workOrderId}`);
+      }
     } else {
-      // Do not perform the check-in because the most recent check-in was within 10 hours
-      console.log("Skipping check-in");
+      // 'Value' property is an empty array, you may handle this case accordingly
+      console.log(
+        `No check-ins found for work order ID: ${workOrderId}. Performing check-in.`
+      );
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
     }
-  } else {
-    // 'Value' property is an empty array, you may handle this case accordingly
-    console.log("No check-ins found.");
-    console.log("Performing check-in");
-    await checkIn(workOrderId, accessToken);
-    await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds
-    accessToken = await getAccessToken();
-    await checkOut(workOrderId, accessToken);
+  } catch (error) {
+    console.error(`Error processing work order ID ${workOrderId}:`, error);
+    // Handle error or log it
+  ;
   }
+   // Wait for all check-in tasks to complete
+   await Promise.allSettled(checkInTasks);
+   console.log("All work order checks have been processed.");
+ });
 });
+
 // Snow Logs Fetch
 
 // Function to fetch data for a given ID
@@ -654,7 +666,19 @@ function convertToCSVAndWriteToFile(data, fileName) {
 // Function to fetch data for a list of work orders and log the result
 
 const workOrderNumbers = [
-  268426621,268496033,268679134,268703854,268810901,269077668,269142952,269193630,269194714,269195654,269196301,269196621,269196865,269197162,269197252,269198463,269198559,269198971,269199881,269200046,269205119,269212949,269213638,269214082,269219417,269219764,269223655,269225778,269238744,269242711,269246713,269250269,269252509,269253110,269253605,269253619,269253649,269254218,269254271,269254557,269255117,269255781,269256420,269273034,269274552,269275680,269276508,269276525,269276558,269276733,269276853,269276881,269277183,269277302,269277587,269277779,269277886,269278079,269278532,269278919,269279078,269279428,269279619,269280589,269280610,269281170,269281789,269284161,269289823,269292204,269293590,269323155,269325300,269326778,269327268,269436674,269445184,269488786,269495318,269554750,269556830,269557075,269557117,269557246,269558098,269559100,269559170,269559655,269559722,269565232
+  268426621, 268496033, 268679134, 268703854, 268810901, 269077668, 269142952,
+  269193630, 269194714, 269195654, 269196301, 269196621, 269196865, 269197162,
+  269197252, 269198463, 269198559, 269198971, 269199881, 269200046, 269205119,
+  269212949, 269213638, 269214082, 269219417, 269219764, 269223655, 269225778,
+  269238744, 269242711, 269246713, 269250269, 269252509, 269253110, 269253605,
+  269253619, 269253649, 269254218, 269254271, 269254557, 269255117, 269255781,
+  269256420, 269273034, 269274552, 269275680, 269276508, 269276525, 269276558,
+  269276733, 269276853, 269276881, 269277183, 269277302, 269277587, 269277779,
+  269277886, 269278079, 269278532, 269278919, 269279078, 269279428, 269279619,
+  269280589, 269280610, 269281170, 269281789, 269284161, 269289823, 269292204,
+  269293590, 269323155, 269325300, 269326778, 269327268, 269436674, 269445184,
+  269488786, 269495318, 269554750, 269556830, 269557075, 269557117, 269557246,
+  269558098, 269559100, 269559170, 269559655, 269559722, 269565232,
 
   /* ... add more work order numbers ... */
 ]; // Your array of work order numbers
@@ -716,6 +740,6 @@ const delayBetweenChunks = 60000; // 1 minute in milliseconds
 
 // fetchDataById();no
 
-app.get("*", (req,res) => {
-  res.sendFile(path.join(__dirname,"index.html"))
-})
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});

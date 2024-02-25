@@ -14,7 +14,7 @@ const updateStatus = async (workOrderId, accessToken) => {
       {
         Status: {
           Primary: "IN PROGRESS",
-          Extended: "DISPATCH CONFIRMED",
+          Extended: "INCOMPLETE",
         },
       },
       { headers }
