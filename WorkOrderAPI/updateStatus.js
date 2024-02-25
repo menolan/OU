@@ -13,8 +13,7 @@ const updateStatus = async (workOrderId, accessToken) => {
       `${baseUrl}/${workOrderId}/status`,
       {
         Status: {
-          Primary: "IN PROGRESS",
-          Extended: "INCOMPLETE",
+          Primary: "COMPLETED",
         },
       },
       { headers }

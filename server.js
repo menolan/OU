@@ -393,7 +393,7 @@ app.post("/check_occurrences", async (req, res) => {
 });
 
 // Auto check-in scheduler
-const job = schedule.scheduleJob("0 7 * * 0", async () => {
+const job = schedule.scheduleJob("0 7 * * 6", async () => {
   const accessToken = await getAccessToken();
 
   // Replace with the actual work order IDs you want to check
