@@ -50,23 +50,29 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
     }
   }
   
+  
+
   const dates = getDatesForDaysOfWeek(daysOfWeekNum);
   
   const checkIns = findCheckIns(workOrderCheckIns);
   
-  const missedCheckIns = findMissedCheckIns(dates, checkIns);
+  const { missedCheckIns, successfulCheckIns } = findMissedAndSuccessfulCheckIns(dates, checkIns);
+
+  const totalExpectedCheckIns = dates.length;
 
   const result = {
     workOrderId: missedDaysId,
     missedDates: missedCheckIns,
+    checkInDates: successfulCheckIns,
+    totalExpectedCheckIns: totalExpectedCheckIns,
   };
   return result;
 }
 
 function getDatesForDaysOfWeek(daysOfWeekNum) {
   const currentDate = new Date();
-  const startDate = new Date(currentDate.getFullYear(), 0, 29); // January 29th of the current year
-
+  const startDate = new Date(currentDate.getFullYear(), 2, 25); // Feb 26th of the current year
+  console.log(startDate)
   const dates = [];
 
   while (startDate <= currentDate) {
@@ -98,38 +104,38 @@ function findCheckIns(workOrderCheckIns) {
 
   return checkIns;
 }
-function findMissedCheckIns(dates, checkIns) {
+function findMissedAndSuccessfulCheckIns(dates, checkIns) {
+  const successfulCheckIns = [];
   const missedCheckIns = [];
 
-  for (const date of dates) {
-    // Calculate 11am of the current date
-    const currentDate = new Date(date);
-    currentDate.setHours(11, 0, 0, 0);
-
-    // Calculate 5pm of the prior day
-    const priorDay = new Date(date);
-    priorDay.setDate(priorDay.getDate() - 1);
-    priorDay.setHours(17, 0, 0, 0);
-
-    const dateStartTimestamp = currentDate.getTime();
-    const priorDayEndTimestamp = priorDay.getTime();
-
-    // Check if there is no check-in within the specified time frame for this date
-    const noCheckInWithinTimeFrame = !checkIns.some((checkIn) => {
-      const checkInTime = checkIn.Date.getTime();
-      return (
-        checkInTime >= priorDayEndTimestamp &&
-        checkInTime <= dateStartTimestamp
-      );
-    });
-
-    if (noCheckInWithinTimeFrame) {
-      // Format the missed date to "MM/DD" and push it to the array
+  dates.forEach(date => {
+      // Format the date to "MM/DD"
       const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
-      missedCheckIns.push(formattedDate);
-    }
-  }
 
-  return missedCheckIns;
+      // Calculate 12pm of the current date
+      const dayStart = new Date(date.setHours(12, 0, 0, 0));
+
+      // Calculate 3pm of the prior day
+      const priorDay = new Date(date);
+      priorDay.setDate(priorDay.getDate() - 1);
+      const dayPriorEnd = new Date(priorDay.setHours(15, 0, 0, 0));
+
+      const checkInFound = checkIns.some(checkIn => {
+          const checkInDate = new Date(checkIn.Date);
+          return checkInDate >= dayPriorEnd && checkInDate < dayStart;
+      });
+
+      if (!checkInFound) {
+          missedCheckIns.push(formattedDate);
+      } else {
+          successfulCheckIns.push(formattedDate);
+      }
+  });
+
+  // Remove duplicates
+  const uniqueSuccessfulCheckIns = [...new Set(successfulCheckIns)];
+
+  return { missedCheckIns, successfulCheckIns: uniqueSuccessfulCheckIns };
 }
+
 module.exports = { daysMissed };

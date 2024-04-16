@@ -14,7 +14,7 @@ const updateStatus = async (workOrderId, accessToken) => {
       {
         Status: {
           Primary: "COMPLETED",
-          Extended: "PENDING CONFIRMATION",
+          Extended: "NO CHARGE",
         },
       },
       { headers }
