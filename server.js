@@ -12,6 +12,7 @@ const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
 const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
 const path = require("path");
+const createHmac = require("node:crypto");
 
 const app = express();
 
@@ -21,6 +22,52 @@ app.use(cors());
 const PORT = process.env.PORT;
 
 app.listen(PORT || 5000, () => console.log("Server started..."));
+
+app.post("/newWO", async (req, res) => {
+  const sigHeaderName = "Sign-Data";
+  const sigHashAlg = "sha256";
+
+  const secret = process.env.SIGNINGKEY;
+
+  //Get the raw body
+  app.use(
+    bodyParser.json({
+      verify: (req, res, buf, encoding) => {
+        if (buf && buf.length) {
+          req.rawBody = buf.toString(encoding || "utf8");
+        }
+      },
+    })
+  );
+
+  //Validate payload
+  function validatePayload(req, res, next) {
+    if (req.get(sigHeaderName)) {
+      //Extract Signature header
+      const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
+
+      //Calculate HMAC
+      const hmac = crypto.createHmac(sigHashAlg, secret);
+      const digest = Buffer.from(
+        sigPrefix + hmac.update(req.rawBody).digest("hex"),
+        "utf8"
+      );
+
+      //Compare HMACs
+      if (
+        sig.length !== digest.length ||
+        !crypto.timingSafeEqual(digest, sig)
+      ) {
+        return res.status(401).send({
+          message: `Request body digest (${digest}) did not match ${sigHeaderName} (${sig})`,
+        });
+      }
+    }
+
+    return res.status(200)
+  }
+  app.use(validatePayload);
+});
 
 // PUT endpoint to update status for multiple objects
 app.put("/update_status", async (req, res) => {
@@ -397,68 +444,67 @@ const job = schedule.scheduleJob("0 7 * * 6", async () => {
   const accessToken = await getAccessToken();
 
   // Replace with the actual work order IDs you want to check
-  const workOrderIds = [267468264, 267467838, 267467839, 267467840,267468036]; // Example work order IDs
+  const workOrderIds = [267468264, 267467838, 267467839, 267467840, 267468036]; // Example work order IDs
 
   const checkInTasks = workOrderIds.map(async (workOrderId) => {
     try {
-    // Make an API call to get the work order history
-    const historyResponse = await axios.get(
-      `https://api.servicechannel.com/v3/odata/workorders(${workOrderId})/Service.CheckInActivity()`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      }
-    );
+      // Make an API call to get the work order history
+      const historyResponse = await axios.get(
+        `https://api.servicechannel.com/v3/odata/workorders(${workOrderId})/Service.CheckInActivity()`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
 
-    const checkInData = historyResponse.data.value; // Ensure you access .data before .value
+      const checkInData = historyResponse.data.value; // Ensure you access .data before .value
 
-    if (Array.isArray(checkInData) && checkInData.length > 0) {
-      // Find the most recent check-in entry
-      const mostRecentCheckIn = checkInData
-        .filter((entry) => entry.Action === "Check In")
-        .reduce((prev, current) =>
-          new Date(current.Date) > new Date(prev.Date) ? current : prev
+      if (Array.isArray(checkInData) && checkInData.length > 0) {
+        // Find the most recent check-in entry
+        const mostRecentCheckIn = checkInData
+          .filter((entry) => entry.Action === "Check In")
+          .reduce((prev, current) =>
+            new Date(current.Date) > new Date(prev.Date) ? current : prev
+          );
+
+        // Calculate the time difference in milliseconds
+        const currentTime = new Date();
+        const checkInTime = new Date(mostRecentCheckIn.Date);
+        const timeDifference = currentTime - checkInTime;
+
+        // Check if the time difference is greater than 10 hours (in milliseconds)
+        const twelveHoursInMilliseconds = 12 * 60 * 60 * 1000;
+        if (timeDifference > twelveHoursInMilliseconds) {
+          // Perform the check-in because the most recent check-in was over 10 hours ago
+          console.log(`Performing check-in for work order ID: ${workOrderId}`);
+          await checkIn(workOrderId, accessToken);
+          await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds, adjust if this was meant to be hours
+          const newAccessToken = await getAccessToken();
+          await checkOut(workOrderId, newAccessToken);
+        } else {
+          // Do not perform the check-in because the most recent check-in was within 10 hours
+          console.log(`Skipping check-in for work order ID: ${workOrderId}`);
+        }
+      } else {
+        // 'Value' property is an empty array, you may handle this case accordingly
+        console.log(
+          `No check-ins found for work order ID: ${workOrderId}. Performing check-in.`
         );
-
-      // Calculate the time difference in milliseconds
-      const currentTime = new Date();
-      const checkInTime = new Date(mostRecentCheckIn.Date);
-      const timeDifference = currentTime - checkInTime;
-
-      // Check if the time difference is greater than 10 hours (in milliseconds)
-      const twelveHoursInMilliseconds = 12 * 60 * 60 * 1000;
-      if (timeDifference > twelveHoursInMilliseconds) {
-        // Perform the check-in because the most recent check-in was over 10 hours ago
-        console.log(`Performing check-in for work order ID: ${workOrderId}`);
         await checkIn(workOrderId, accessToken);
-        await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds, adjust if this was meant to be hours
+        await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // Adjust if necessary
         const newAccessToken = await getAccessToken();
         await checkOut(workOrderId, newAccessToken);
-      } else {
-        // Do not perform the check-in because the most recent check-in was within 10 hours
-        console.log(`Skipping check-in for work order ID: ${workOrderId}`);
       }
-    } else {
-      // 'Value' property is an empty array, you may handle this case accordingly
-      console.log(
-        `No check-ins found for work order ID: ${workOrderId}. Performing check-in.`
-      );
-      await checkIn(workOrderId, accessToken);
-      await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // Adjust if necessary
-      const newAccessToken = await getAccessToken();
-      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
     }
-  } catch (error) {
-    console.error(`Error processing work order ID ${workOrderId}:`, error);
-    // Handle error or log it
-  ;
-  }
-   // Wait for all check-in tasks to complete
-   await Promise.allSettled(checkInTasks);
-   console.log("All work order checks have been processed.");
- });
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
 });
 
 // Snow Logs Fetch
