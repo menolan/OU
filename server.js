@@ -30,6 +30,7 @@ app.post("/newWO", async (req, res) => {
   const secret = process.env.SIGNINGKEY;
 
   //Get the raw body
+  app.use(
     bodyParser.json({
       verify: (req, res, buf, encoding) => {
         if (buf && buf.length) {
@@ -37,7 +38,7 @@ app.post("/newWO", async (req, res) => {
         }
       },
     })
-  ;
+  );
 
   //Validate payload
   if (req.get(sigHeaderName)) {
@@ -59,7 +60,7 @@ app.post("/newWO", async (req, res) => {
     }
   }
 
-  return res.status(200);
+  return res.status(200).json({});
 });
 
 // PUT endpoint to update status for multiple objects
