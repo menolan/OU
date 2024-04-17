@@ -38,9 +38,12 @@ app.post("/newWO", async (req, res) => {
   //Validate payload
   if (req.get(sigHeaderName)) {
     //Extract Signature header
+    console.log(req.get(sigHeaderName), "req.get(sigHeaderName")
     const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
-
+    console.log(req.rawBody, "req.rawBody")
     //Calculate HMAC
+    console.log(sigHashAlg, "sigHashAlg")
+    console.log(secret, "secret")
     const hmac = createHmac(sigHashAlg, secret);
     const digest = Buffer.from(
       hmac.update(req.rawBody).digest("hex"),
