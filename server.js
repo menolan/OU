@@ -46,7 +46,9 @@ app.post("/newWO", async (req, res) => {
       hmac.update(req.rawBody).digest("hex"),
       "utf8"
     );
-
+    console.log(sigHeaderName, "Sig Header Name")
+    console.log(sig, "Sig ")
+    console.log(digest, "digest")
     //Compare HMACs
     if (sig.length !== digest.length || !crypto.timingSafeEqual(digest, sig)) {
       return res.status(401).send({
