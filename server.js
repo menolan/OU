@@ -12,7 +12,7 @@ const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
 const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
 const path = require("path");
-const { createHmac } = require("node:crypto");
+const { createHmac, timingSafeEqual } = require("node:crypto");
 
 const app = express();
 
@@ -53,7 +53,7 @@ app.post("/newWO", async (req, res) => {
     console.log(sig, "Sig ")
     console.log(digest, "digest")
     //Compare HMACs
-    if (sig.length !== digest.length || !crypto.timingSafeEqual(digest, sig)) {
+    if (sig.length !== digest.length || !timingSafeEqual(digest, sig)) {
       return res.status(401).send({
         message: `Request body digest (${digest}) did not match ${sigHeaderName} (${sig})`,
       });
