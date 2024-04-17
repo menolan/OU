@@ -46,7 +46,7 @@ app.post("/newWO", async (req, res) => {
     console.log(secret, "secret")
     const hmac = createHmac(sigHashAlg, secret);
     const digest = Buffer.from(
-      hmac.update(req.rawBody).digest("utf8"),
+      hmac.update(req.rawBody).digest("base64"),
       "utf8"
     );
     console.log(sigHeaderName, "Sig Header Name")
