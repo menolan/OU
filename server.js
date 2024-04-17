@@ -30,7 +30,6 @@ app.post("/newWO", async (req, res) => {
   const secret = process.env.SIGNINGKEY;
 
   //Get the raw body
-  app.use(
     bodyParser.json({
       verify: (req, res, buf, encoding) => {
         if (buf && buf.length) {
@@ -38,35 +37,29 @@ app.post("/newWO", async (req, res) => {
         }
       },
     })
-  );
+  ;
 
   //Validate payload
-  function validatePayload(req, res, next) {
-    if (req.get(sigHeaderName)) {
-      //Extract Signature header
-      const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
+  if (req.get(sigHeaderName)) {
+    //Extract Signature header
+    const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
 
-      //Calculate HMAC
-      const hmac = crypto.createHmac(sigHashAlg, secret);
-      const digest = Buffer.from(
-        sigPrefix + hmac.update(req.rawBody).digest("hex"),
-        "utf8"
-      );
+    //Calculate HMAC
+    const hmac = crypto.createHmac(sigHashAlg, secret);
+    const digest = Buffer.from(
+      sigPrefix + hmac.update(req.rawBody).digest("hex"),
+      "utf8"
+    );
 
-      //Compare HMACs
-      if (
-        sig.length !== digest.length ||
-        !crypto.timingSafeEqual(digest, sig)
-      ) {
-        return res.status(401).send({
-          message: `Request body digest (${digest}) did not match ${sigHeaderName} (${sig})`,
-        });
-      }
+    //Compare HMACs
+    if (sig.length !== digest.length || !crypto.timingSafeEqual(digest, sig)) {
+      return res.status(401).send({
+        message: `Request body digest (${digest}) did not match ${sigHeaderName} (${sig})`,
+      });
     }
-
-    return res.status(200)
   }
-  app.use(validatePayload);
+
+  return res.status(200);
 });
 
 // PUT endpoint to update status for multiple objects
