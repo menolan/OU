@@ -12,7 +12,7 @@ const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
 const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
 const path = require("path");
-const createHmac = require("node:crypto");
+const { createHmac } = require("node:crypto");
 
 const app = express();
 
