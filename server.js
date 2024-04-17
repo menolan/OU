@@ -46,7 +46,7 @@ app.post("/newWO", async (req, res) => {
     const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
 
     //Calculate HMAC
-    const hmac = crypto.createHmac(sigHashAlg, secret);
+    const hmac = createHmac(sigHashAlg, secret);
     const digest = Buffer.from(
       sigPrefix + hmac.update(req.rawBody).digest("hex"),
       "utf8"
