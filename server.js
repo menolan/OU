@@ -16,7 +16,13 @@ const { createHmac } = require("node:crypto");
 
 const app = express();
 
-app.use(bodyParser.json());
+app.use(bodyParser.json({
+  verify: (req, res, buf, encoding) => {
+    if (buf && buf.length) {
+      req.rawBody = buf.toString(encoding || "utf8");
+    }
+  },
+}));
 app.use(cors());
 
 const PORT = process.env.PORT;
@@ -28,17 +34,6 @@ app.post("/newWO", async (req, res) => {
   const sigHashAlg = "sha256";
 
   const secret = process.env.SIGNINGKEY;
-
-  //Get the raw body
-  app.use(
-    bodyParser.json({
-      verify: (req, res, buf, encoding) => {
-        if (buf && buf.length) {
-          req.rawBody = buf.toString(encoding || "utf8");
-        }
-      },
-    })
-  );
 
   //Validate payload
   if (req.get(sigHeaderName)) {
