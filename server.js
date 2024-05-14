@@ -6,6 +6,7 @@ const fs = require("fs");
 const ExcelJS = require("exceljs");
 require("dotenv").config();
 const schedule = require("node-schedule");
+const cron = require("node-cron");
 const { getAccessToken } = require("./Auth/getAccessToken.js");
 const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
@@ -290,7 +291,7 @@ async function readAndGroupExcelFile(excelPath) {
   const groups = {};
   worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
     if (rowNumber > 1) {
-      const workOrderId = row.getCell(21).value;
+      const workOrderId = row.getCell(22).value;
       const daysOfWeek = row.getCell(5).value;
       const sweepingSubs = row.getCell(10).value;
 
@@ -401,7 +402,7 @@ app.post("/check_occurrences", async (req, res) => {
 });
 
 // Auto check-in scheduler
-const job = schedule.scheduleJob("0 7 * * 6", async () => {
+const blob = schedule.scheduleJob("0 7 * * 4", async () => {
   const accessToken = await getAccessToken();
 
   // Replace with the actual work order IDs you want to check
@@ -468,6 +469,93 @@ const job = schedule.scheduleJob("0 7 * * 6", async () => {
   });
 });
 
+cron.schedule("32 9 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383046, 270383047]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 485 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("48 8 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383045]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 724 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("40 7 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383446]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 220 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("10 8 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383443, 270383447]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 423 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
 // Snow Logs Fetch
 
 // Function to fetch data for a given ID
@@ -675,11 +763,7 @@ app.post("/check_snow", async (req, res) => {
     const snowIds = req.body.work_order_ids;
     console.log(snowIds);
 
-    if (
-      !snowIds ||
-      !Array.isArray(snowIds) ||
-      snowIds.length === 0
-    ) {
+    if (!snowIds || !Array.isArray(snowIds) || snowIds.length === 0) {
       return res
         .status(400)
         .json({ error: "Invalid work_order_ids in the request body" });
@@ -687,8 +771,12 @@ app.post("/check_snow", async (req, res) => {
 
     const chunkSize = 100; // Process 100 work orders at a time
     const delayBetweenChunks = 45000; // 45 seconds delay between chunks
-    console.log(chunkSize, delayBetweenChunks)
-    const results = await fetchDataInChunksWithDelay(snowIds, chunkSize, delayBetweenChunks);
+    console.log(chunkSize, delayBetweenChunks);
+    const results = await fetchDataInChunksWithDelay(
+      snowIds,
+      chunkSize,
+      delayBetweenChunks
+    );
     res.json(results);
   } catch (error) {
     res
@@ -705,7 +793,7 @@ async function fetchDataInChunksWithDelay(
 ) {
   const accessToken = await getAccessToken();
   const totalChunks = Math.ceil(snowIds.length / chunkSize);
-  console.log(totalChunks + "Total Chunks")
+  console.log(totalChunks + "Total Chunks");
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Sheet 1");
 
@@ -716,7 +804,7 @@ async function fetchDataInChunksWithDelay(
 
     try {
       const extractedData = await extractDataForWorkOrders(chunk, accessToken);
-      
+
       console.log(`Processed chunk ${chunkIndex + 1}/${totalChunks}`);
 
       // Append data to the Excel file
