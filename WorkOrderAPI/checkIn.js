@@ -2,8 +2,6 @@ const axios = require("axios");
 const { getAccessToken } = require("../Auth/getAccessToken");
 const { getData } = require("./getData");
 
-
-
 const checkIn = async (workOrderId, accessToken) => {
     console.log("in check in")
       const data = await getData(workOrderId, accessToken);

@@ -1,26 +1,24 @@
 const axios = require("axios");
-
+const {getData} = require("./getData")
 
 
 // Function to count missed days for check-ins for a list of work orders
 async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
   // Ensure daysOfWeekNum is an array of numbers
   if (!Array.isArray(daysOfWeekNum) || daysOfWeekNum.some(isNaN)) {
-      throw new Error('daysOfWeekNum must be an array of numbers');
+    throw new Error('daysOfWeekNum must be an array of numbers');
   }
 
   // Validate missedDaysId and accessToken
   if (!missedDaysId) {
-      throw new Error('missedDaysId is required');
+    throw new Error('missedDaysId is required');
   }
   if (!accessToken) {
-      throw new Error('accessToken is required');
+    throw new Error('accessToken is required');
   }
 
-  const workOrderCheckIns = await fetchCheckInsForWorkOrder(
-    missedDaysId,
-    accessToken
-  );
+  const workOrderCheckIns = await fetchCheckInsForWorkOrder(missedDaysId, accessToken);
+
   async function fetchCheckInsForWorkOrder(missedDaysId, accessToken) {
     try {
       const response = await axios.get(
@@ -49,23 +47,27 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
       return [];
     }
   }
-  
+
+  const locationData = await getData(missedDaysId, accessToken);
+  const locLatitude = locationData.LocLatitude;
+  const locLongitude = locationData.LocLongitude;
+
   const dates = getDatesForDaysOfWeek(daysOfWeekNum);
-  
   const checkIns = findCheckIns(workOrderCheckIns);
-  
-  const missedCheckIns = findMissedCheckIns(dates, checkIns);
+  const { missedCheckIns, successfulCheckIns } = findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude);
 
   const result = {
     workOrderId: missedDaysId,
     missedDates: missedCheckIns,
+    checkInDates: successfulCheckIns,
   };
+
   return result;
 }
 
 function getDatesForDaysOfWeek(daysOfWeekNum) {
   const currentDate = new Date();
-  const startDate = new Date(currentDate.getFullYear(), 0, 29); // January 29th of the current year
+  const startDate = new Date(currentDate.getFullYear(), 4, 27); // January 29th of the current year
 
   const dates = [];
 
@@ -83,53 +85,85 @@ function getDatesForDaysOfWeek(daysOfWeekNum) {
   return dates;
 }
 
+function extractCoordinates(callerId) {
+  const regex = /GPS\(([^,]+),([^)]+)\)/;
+  const match = regex.exec(callerId);
+  if (match) {
+    return {
+      latitude: parseFloat(match[1]),
+      longitude: parseFloat(match[2])
+    };
+  }
+  return null; // Or you can throw an error if the format is always expected to be correct
+}
+
 function findCheckIns(workOrderCheckIns) {
   const checkIns = [];
 
   for (const entry of workOrderCheckIns) {
-    if (entry.Action === "Check In") {
-      // Use the check-in date directly without timezone adjustment
-      const checkInDate = new Date(entry.Date);
-      checkIns.push({
-        Date: checkInDate,
-      });
+    if (entry.Action === "Check In" || entry.Action === "Check Out") {
+      const coordinates = extractCoordinates(entry.CallerId);
+      if (coordinates) {
+        const checkInDate = new Date(entry.Date);
+        checkIns.push({
+          Date: checkInDate,
+          Action: entry.Action,
+          Latitude: coordinates.latitude,
+          Longitude: coordinates.longitude,
+        });
+      }
     }
   }
 
   return checkIns;
 }
-function findMissedCheckIns(dates, checkIns) {
+
+function findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude) {
+  const successfulCheckIns = [];
   const missedCheckIns = [];
 
+  const checkInMap = new Map();
+
   for (const date of dates) {
-    // Calculate 11am of the current date
-    const currentDate = new Date(date);
-    currentDate.setHours(11, 0, 0, 0);
+    const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`; // Format as "MM/DD"
 
-    // Calculate 5pm of the prior day
-    const priorDay = new Date(date);
-    priorDay.setDate(priorDay.getDate() - 1);
-    priorDay.setHours(17, 0, 0, 0);
+    // Define the check-in window
+    const dayStart = new Date(date);
+    dayStart.setHours(12, 0, 0, 0); // 12 PM of the current day
+    const priorDayEnd = new Date(date);
+    priorDayEnd.setDate(priorDayEnd.getDate() - 1);
+    priorDayEnd.setHours(15, 0, 0, 0); // 3 PM of the previous day
 
-    const dateStartTimestamp = currentDate.getTime();
-    const priorDayEndTimestamp = priorDay.getTime();
-
-    // Check if there is no check-in within the specified time frame for this date
-    const noCheckInWithinTimeFrame = !checkIns.some((checkIn) => {
-      const checkInTime = checkIn.Date.getTime();
-      return (
-        checkInTime >= priorDayEndTimestamp &&
-        checkInTime <= dateStartTimestamp
-      );
+    // First check if there's any check-in within the window
+    const checkInFound = checkIns.some(checkIn => {
+      return checkIn.Date >= priorDayEnd && checkIn.Date < dayStart && checkIn.Action === "Check In";
     });
 
-    if (noCheckInWithinTimeFrame) {
-      // Format the missed date to "MM/DD" and push it to the array
-      const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+    if (checkInFound) {
+      // Now check if there's a check-in with matching coordinates to the location
+      const checkInWithMatchingCoordinates = checkIns.find(checkIn => {
+        return (
+          checkIn.Date >= priorDayEnd &&
+          checkIn.Date < dayStart &&
+          checkIn.Action === "Check In" &&
+          checkIn.Latitude === locLatitude &&
+          checkIn.Longitude === locLongitude
+        );
+      });
+
+      if (checkInWithMatchingCoordinates) {
+        missedCheckIns.push(formattedDate);
+      } else {
+        successfulCheckIns.push(formattedDate);
+      }
+    } else {
       missedCheckIns.push(formattedDate);
     }
   }
 
-  return missedCheckIns;
+  // Remove duplicates
+  const uniqueSuccessfulCheckIns = [...new Set(successfulCheckIns)];
+  return { missedCheckIns, successfulCheckIns: uniqueSuccessfulCheckIns }; // Corrected return statement
 }
+
 module.exports = { daysMissed };

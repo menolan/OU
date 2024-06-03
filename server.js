@@ -207,7 +207,7 @@ const processInChunksSubs = async (
             .map((day) => parseInt(day.trim(), 10));
 
           // Ensure the async operation is awaited and results are captured
-          return processFunction(item.workOrderId, daysOfWeekNum, accessToken);
+          return processFunction(item.missedDaysId, daysOfWeekNum, accessToken);
         })
       );
 
@@ -290,18 +290,17 @@ async function readAndGroupExcelFile(excelPath) {
   const groups = {};
   worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
     if (rowNumber > 1) {
-      const workOrderId = row.getCell(20).value;
+      const missedDaysId = row.getCell(21).value;
       const daysOfWeek = row.getCell(5).value;
-      const sweepingSubs = row.getCell(10).value; // Assuming "Sweeping Subs" is in the third column
-
+      const sweepingSubs = row.getCell(10).value; // Assuming "Sweeping Subs" is in the tenth column
+      console.log(missedDaysId)
       if (!groups[sweepingSubs]) {
         groups[sweepingSubs] = [];
       }
 
-      groups[sweepingSubs].push({ workOrderId, daysOfWeek });
+      groups[sweepingSubs].push({ missedDaysId, daysOfWeek });
     }
   });
-
   return groups;
 }
 
