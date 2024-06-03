@@ -13,7 +13,7 @@ const checkOut = async (workOrderId, accessToken, techCount) => {
     PrimaryStatus: "InProgress",
     ExtendedStatus: "Incomplete",
     UserId: 296641,
-    TechsCount: techs,
+    TechsCount: 5,
     Latitude: locLatitude,
     Longitude: locLongitude,
   };

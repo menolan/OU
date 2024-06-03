@@ -6,20 +6,22 @@ const fs = require("fs");
 const ExcelJS = require("exceljs");
 require("dotenv").config();
 const schedule = require("node-schedule");
+const cron = require("node-cron");
 const { getAccessToken } = require("./Auth/getAccessToken.js");
 const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
 const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
+const path = require("path");
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(cors());
 
-const PORT = 4000;
+const PORT = process.env.PORT;
 
-app.listen(PORT, () => console.log("Listening on port 4000"));
+app.listen(PORT || 5000, () => console.log("Server started..."));
 
 // PUT endpoint to update status for multiple objects
 app.put("/update_status", async (req, res) => {
@@ -125,7 +127,7 @@ app.post("/check_out", async (req, res) => {
     const accessToken = await getAccessToken();
     const workOrderIds = req.body.work_order_ids;
     console.log(workOrderIds);
-    const techCount = req.body.tech_count
+    const techCount = req.body.tech_count;
     if (
       !workOrderIds ||
       !Array.isArray(workOrderIds) ||
@@ -211,7 +213,6 @@ const processInChunksSubs = async (
         })
       );
 
-
       results = [...results, ...chunkResults];
 
       if (i + chunkSize < items.length) {
@@ -290,10 +291,10 @@ async function readAndGroupExcelFile(excelPath) {
   const groups = {};
   worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
     if (rowNumber > 1) {
-      const missedDaysId = row.getCell(21).value;
+      const workOrderId = row.getCell(22).value;
       const daysOfWeek = row.getCell(5).value;
-      const sweepingSubs = row.getCell(10).value; // Assuming "Sweeping Subs" is in the tenth column
-      console.log(missedDaysId)
+      const sweepingSubs = row.getCell(10).value;
+
       if (!groups[sweepingSubs]) {
         groups[sweepingSubs] = [];
       }
@@ -328,6 +329,12 @@ app.get("/days_missed", async (req, res) => {
     // Define the column headers
     worksheet.columns = [
       { header: "Work Order Number", key: "workOrderId", width: 20 },
+      {
+        header: "Total Expected Check-Ins",
+        key: "totalExpectedCheckIns",
+        width: 25,
+      },
+      { header: "Check-In Dates (MM/DD)", key: "checkInDates", width: 30 },
       { header: "Missed Dates (MM/DD)", key: "missedDates", width: 30 },
       { header: "Sweeping Subs", key: "sweepingSubs", width: 30 }, // New column for Sweeping Subs
     ];
@@ -336,6 +343,8 @@ app.get("/days_missed", async (req, res) => {
       workOrders.forEach((workOrder) => {
         worksheet.addRow({
           workOrderId: workOrder.workOrderId,
+          totalExpectedCheckIns: workOrder.totalExpectedCheckIns,
+          checkInDates: workOrder.checkInDates.join(", "),
           missedDates: workOrder.missedDates.join(", "),
           sweepingSubs: groupName, // Assuming you want to label each row with its group name
         });
@@ -391,61 +400,160 @@ app.post("/check_occurrences", async (req, res) => {
   }
 });
 
-// Auto check in scheduler
-const job = schedule.scheduleJob("0 4 * * 2", async () => {
+// Auto check-in scheduler
+const blob = schedule.scheduleJob("0 7 * * 4", async () => {
   const accessToken = await getAccessToken();
 
-  // Replace with the actual work order ID you want to check
-  const workOrderId = 267468264;
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [267468264, 267467838, 267467839, 267467840, 267468036]; // Example work order IDs
 
-  // Make an API call to get the work order history
-  const historyResponse = await axios.get(
-    `https://api.servicechannel.com/v3/odata/workorders(267468264)/Service.CheckInActivity()`,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
-
-  const checkInData = historyResponse.value;
-
-  if (Array.isArray(checkInData) && checkInData.length > 0) {
-    // Find the most recent check-in entry
-    const mostRecentCheckIn = checkInData
-      .filter((entry) => entry.Action === "Check In")
-      .reduce((prev, current) =>
-        new Date(current.Date) > new Date(prev.Date) ? current : prev
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      // Make an API call to get the work order history
+      const historyResponse = await axios.get(
+        `https://api.servicechannel.com/v3/odata/workorders(${workOrderId})/Service.CheckInActivity()`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
       );
 
-    // Calculate the time difference in milliseconds
-    const currentTime = new Date();
-    const checkInTime = new Date(mostRecentCheckIn.Date);
-    const timeDifference = currentTime - checkInTime;
+      const checkInData = historyResponse.data.value; // Ensure you access .data before .value
 
-    // Check if the time difference is greater than 10 hours (in milliseconds)
-    const tenHoursInMilliseconds = 10 * 60 * 60 * 1000;
-    if (timeDifference > tenHoursInMilliseconds) {
-      // Perform the check-in because the most recent check-in was over 10 hours ago
-      console.log("Performing check-in");
-      await checkIn(workOrderId, accessToken);
-      await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds
-      const accessToken = await getAccessToken();
-      await checkOut(workOrderId, accessToken);
-    } else {
-      // Do not perform the check-in because the most recent check-in was within 10 hours
-      console.log("Skipping check-in");
+      if (Array.isArray(checkInData) && checkInData.length > 0) {
+        // Find the most recent check-in entry
+        const mostRecentCheckIn = checkInData
+          .filter((entry) => entry.Action === "Check In")
+          .reduce((prev, current) =>
+            new Date(current.Date) > new Date(prev.Date) ? current : prev
+          );
+
+        // Calculate the time difference in milliseconds
+        const currentTime = new Date();
+        const checkInTime = new Date(mostRecentCheckIn.Date);
+        const timeDifference = currentTime - checkInTime;
+
+        // Check if the time difference is greater than 10 hours (in milliseconds)
+        const twelveHoursInMilliseconds = 12 * 60 * 60 * 1000;
+        if (timeDifference > twelveHoursInMilliseconds) {
+          // Perform the check-in because the most recent check-in was over 10 hours ago
+          console.log(`Performing check-in for work order ID: ${workOrderId}`);
+          await checkIn(workOrderId, accessToken);
+          await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds, adjust if this was meant to be hours
+          const newAccessToken = await getAccessToken();
+          await checkOut(workOrderId, newAccessToken);
+        } else {
+          // Do not perform the check-in because the most recent check-in was within 10 hours
+          console.log(`Skipping check-in for work order ID: ${workOrderId}`);
+        }
+      } else {
+        // 'Value' property is an empty array, you may handle this case accordingly
+        console.log(
+          `No check-ins found for work order ID: ${workOrderId}. Performing check-in.`
+        );
+        await checkIn(workOrderId, accessToken);
+        await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // Adjust if necessary
+        const newAccessToken = await getAccessToken();
+        await checkOut(workOrderId, newAccessToken);
+      }
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
     }
-  } else {
-    // 'Value' property is an empty array, you may handle this case accordingly
-    console.log("No check-ins found.");
-    console.log("Performing check-in");
-    await checkIn(workOrderId, accessToken);
-    await new Promise((resolve) => setTimeout(resolve, 24 * 60 * 1000)); // 24 minutes in milliseconds
-    accessToken = await getAccessToken();
-    await checkOut(workOrderId, accessToken);
-  }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("32 9 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383046, 270383047]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 485 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("48 8 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383045]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 724 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("40 7 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383446]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 220 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
+});
+
+cron.schedule("10 8 11 5 * ", async () => {
+  const accessToken = await getAccessToken();
+
+  // Replace with the actual work order IDs you want to check
+  const workOrderIds = [270383443, 270383447]; // Example work order IDs
+
+  const checkInTasks = workOrderIds.map(async (workOrderId) => {
+    try {
+      await checkIn(workOrderId, accessToken);
+      await new Promise((resolve) => setTimeout(resolve, 423 * 60 * 1000)); // Adjust if necessary
+      const newAccessToken = await getAccessToken();
+      await checkOut(workOrderId, newAccessToken);
+    } catch (error) {
+      console.error(`Error processing work order ID ${workOrderId}:`, error);
+      // Handle error or log it
+    }
+    // Wait for all check-in tasks to complete
+    await Promise.allSettled(checkInTasks);
+    console.log("All work order checks have been processed.");
+  });
 });
 // Snow Logs Fetch
 
@@ -649,32 +757,53 @@ function convertToCSVAndWriteToFile(data, fileName) {
   fs.writeFileSync(fileName, csvContent, "utf8");
 }
 
-// Function to fetch data for a list of work orders and log the result
+app.post("/check_snow", async (req, res) => {
+  try {
+    const snowIds = req.body.work_order_ids;
+    console.log(snowIds);
 
-const workOrderNumbers = [
-  268426621,268496033,268679134,268703854,268810901,269077668,269142952,269193630,269194714,269195654,269196301,269196621,269196865,269197162,269197252,269198463,269198559,269198971,269199881,269200046,269205119,269212949,269213638,269214082,269219417,269219764,269223655,269225778,269238744,269242711,269246713,269250269,269252509,269253110,269253605,269253619,269253649,269254218,269254271,269254557,269255117,269255781,269256420,269273034,269274552,269275680,269276508,269276525,269276558,269276733,269276853,269276881,269277183,269277302,269277587,269277779,269277886,269278079,269278532,269278919,269279078,269279428,269279619,269280589,269280610,269281170,269281789,269284161,269289823,269292204,269293590,269323155,269325300,269326778,269327268,269436674,269445184,269488786,269495318,269554750,269556830,269557075,269557117,269557246,269558098,269559100,269559170,269559655,269559722,269565232
+    if (!snowIds || !Array.isArray(snowIds) || snowIds.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Invalid work_order_ids in the request body" });
+    }
 
-  /* ... add more work order numbers ... */
-]; // Your array of work order numbers
+    const chunkSize = 100; // Process 100 work orders at a time
+    const delayBetweenChunks = 45000; // 45 seconds delay between chunks
+    console.log(chunkSize, delayBetweenChunks);
+    const results = await fetchDataInChunksWithDelay(
+      snowIds,
+      chunkSize,
+      delayBetweenChunks
+    );
+    res.json(results);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+});
+
 // Function to fetch data for a list of work orders in chunks with a delay
 async function fetchDataInChunksWithDelay(
-  workOrderNumbers,
+  snowIds,
   chunkSize,
   delayBetweenChunks
 ) {
   const accessToken = await getAccessToken();
-  const totalChunks = Math.ceil(workOrderNumbers.length / chunkSize);
-
+  const totalChunks = Math.ceil(snowIds.length / chunkSize);
+  console.log(totalChunks + "Total Chunks");
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Sheet 1");
 
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
     const start = chunkIndex * chunkSize;
     const end = (chunkIndex + 1) * chunkSize;
-    const chunk = workOrderNumbers.slice(start, end);
+    const chunk = snowIds.slice(start, end);
 
     try {
       const extractedData = await extractDataForWorkOrders(chunk, accessToken);
+
       console.log(`Processed chunk ${chunkIndex + 1}/${totalChunks}`);
 
       // Append data to the Excel file
@@ -705,11 +834,8 @@ async function fetchDataInChunksWithDelay(
   console.log("Excel file saved as output.xlsx");
 }
 
-// Specify the chunk size and delay between chunks
-const chunkSize = 75;
-const delayBetweenChunks = 60000; // 1 minute in milliseconds
+// fetchDataById();
 
-// Call the main function to fetch data in chunks with a delay
-// fetchDataInChunksWithDelay(workOrderNumbers, chunkSize, delayBetweenChunks);
-
-// fetchDataById();no
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});

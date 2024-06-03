@@ -47,19 +47,35 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
       return [];
     }
   }
+<<<<<<< HEAD
 
   const locationData = await getData(missedDaysId, accessToken);
   const locLatitude = locationData.LocLatitude;
   const locLongitude = locationData.LocLongitude;
+=======
+  
+  
+>>>>>>> 2bc194ca074c0b0729f7700864b5ec1a9d2242e0
 
   const dates = getDatesForDaysOfWeek(daysOfWeekNum);
   const checkIns = findCheckIns(workOrderCheckIns);
+<<<<<<< HEAD
   const { missedCheckIns, successfulCheckIns } = findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude);
+=======
+  
+  const { missedCheckIns, successfulCheckIns } = findMissedAndSuccessfulCheckIns(dates, checkIns);
+
+  const totalExpectedCheckIns = dates.length;
+>>>>>>> 2bc194ca074c0b0729f7700864b5ec1a9d2242e0
 
   const result = {
     workOrderId: missedDaysId,
     missedDates: missedCheckIns,
     checkInDates: successfulCheckIns,
+<<<<<<< HEAD
+=======
+    totalExpectedCheckIns: totalExpectedCheckIns,
+>>>>>>> 2bc194ca074c0b0729f7700864b5ec1a9d2242e0
   };
 
   return result;
@@ -67,9 +83,15 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
 
 function getDatesForDaysOfWeek(daysOfWeekNum) {
   const currentDate = new Date();
+<<<<<<< HEAD
   const startDate = new Date(currentDate.getFullYear(), 4, 27); // January 29th of the current year
 
+=======
+  const startDate = new Date(currentDate.getFullYear(), 3, 29);
+  console.log(startDate)
+>>>>>>> 2bc194ca074c0b0729f7700864b5ec1a9d2242e0
   const dates = [];
+  console.log(dates)
 
   while (startDate <= currentDate) {
     if (daysOfWeekNum.includes(startDate.getDay())) {
@@ -117,6 +139,7 @@ function findCheckIns(workOrderCheckIns) {
 
   return checkIns;
 }
+<<<<<<< HEAD
 
 function findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude) {
   const successfulCheckIns = [];
@@ -167,3 +190,40 @@ function findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongit
 }
 
 module.exports = { daysMissed };
+=======
+function findMissedAndSuccessfulCheckIns(dates, checkIns) {
+  const successfulCheckIns = [];
+  const missedCheckIns = [];
+
+  dates.forEach(date => {
+      // Format the date to "MM/DD"
+      const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`;
+
+      // Calculate 12pm of the current date
+      const dayStart = new Date(date.setHours(12, 0, 0, 0));
+
+      // Calculate 3pm of the prior day
+      const priorDay = new Date(date);
+      priorDay.setDate(priorDay.getDate() - 1);
+      const dayPriorEnd = new Date(priorDay.setHours(15, 0, 0, 0));
+
+      const checkInFound = checkIns.some(checkIn => {
+          const checkInDate = new Date(checkIn.Date);
+          return checkInDate >= dayPriorEnd && checkInDate < dayStart;
+      });
+
+      if (!checkInFound) {
+          missedCheckIns.push(formattedDate);
+      } else {
+          successfulCheckIns.push(formattedDate);
+      }
+  });
+
+  // Remove duplicates
+  const uniqueSuccessfulCheckIns = [...new Set(successfulCheckIns)];
+
+  return { missedCheckIns, successfulCheckIns: uniqueSuccessfulCheckIns };
+}
+
+module.exports = { daysMissed };
+>>>>>>> 2bc194ca074c0b0729f7700864b5ec1a9d2242e0
