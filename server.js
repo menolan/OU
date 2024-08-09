@@ -291,7 +291,7 @@ async function readAndGroupExcelFile(excelPath) {
   const groups = {};
   worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
     if (rowNumber > 1) {
-      const workOrderId = row.getCell(22).value;
+      const missedDaysId = row.getCell(25).value;
       const daysOfWeek = row.getCell(5).value;
       const sweepingSubs = row.getCell(10).value;
 
