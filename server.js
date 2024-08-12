@@ -28,7 +28,7 @@ app.use(cors());
 
 const PORT = process.env.PORT;
 
-app.listen(PORT || 5000, () => console.log("Server started..."));
+app.listen(PORT || 4000, () => console.log("Server started..."));
 
 app.post("/newWO", async (req, res) => {
   const sigHeaderName = "Sign-Data";
@@ -538,27 +538,7 @@ cron.schedule("32 9 11 5 * ", async () => {
   });
 });
 
-cron.schedule("48 8 11 5 * ", async () => {
-  const accessToken = await getAccessToken();
 
-  // Replace with the actual work order IDs you want to check
-  const workOrderIds = [270383045]; // Example work order IDs
-
-  const checkInTasks = workOrderIds.map(async (workOrderId) => {
-    try {
-      await checkIn(workOrderId, accessToken);
-      await new Promise((resolve) => setTimeout(resolve, 724 * 60 * 1000)); // Adjust if necessary
-      const newAccessToken = await getAccessToken();
-      await checkOut(workOrderId, newAccessToken);
-    } catch (error) {
-      console.error(`Error processing work order ID ${workOrderId}:`, error);
-      // Handle error or log it
-    }
-    // Wait for all check-in tasks to complete
-    await Promise.allSettled(checkInTasks);
-    console.log("All work order checks have been processed.");
-  });
-});
 
 cron.schedule("40 7 11 5 * ", async () => {
   const accessToken = await getAccessToken();
