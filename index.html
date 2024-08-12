@@ -9,8 +9,21 @@
     <h1>Update Status</h1>
 
     <form id="updateStatusForm">
-      <label for="statusIds">Work Order IDs (comma-separated):</label>
+      <label for="statusIds">Work Order IDs:</label>
       <input type="text" id="statusIds" name="statusIds" required />
+      <label for="status">Choose a Status:</label>
+
+      <select name="status" id="status">
+        <option value="IN PROGRESS/INCOMPLETE">In Progress/Incomplete</option>
+        <option value="IN PROGRESS/DISPATCH CONFIRMED">
+          In Progress/Dispatch Confirmed
+        </option>
+        <option value="COMPLETED/CANCELLED">Completed/Cancelled</option>
+        <option value="COMPLETED/NO CHARGE">completed/No Charge</option>
+        <option value="COMPLETED/PENDING CONFIRMATION">
+          Completed/Pending Confirmation
+        </option>
+      </select>
 
       <button type="button" onclick="submitForm()">Update Status</button>
     </form>
@@ -20,7 +33,7 @@
     <h1>Check In</h1>
 
     <form id="checkInForm">
-      <label for="checkInIds">Work Order IDs (comma-separated):</label>
+      <label for="checkInIds">Work Order IDs:</label>
       <input type="text" id="checkInIds" name="checkInIds" required />
 
       <button type="button" onclick="submitCheckIn()">Check In</button>
@@ -29,54 +42,47 @@
     <h1>Check Out</h1>
 
     <form id="checkOutForm">
-      <label for="checkOutIds">Work Order IDs (comma-separated):</label>
+      <label for="checkOutIds">Work Order IDs:</label>
       <input type="text" id="checkOutIds" name="checkOutIds" required />
       <label for="checkOutTechs">Number of Techs (up to 10):</label>
-      <input type="text" id="checkOutTechs" name="checkOutTechs">
+      <input type="text" id="checkOutTechs" name="checkOutTechs" />
       <button type="button" onclick="submitCheckOut()">Check Out</button>
     </form>
 
     <div id="response"></div>
-
-    <h1>Work Order Occurrences Checker</h1>
-
-    <form id="workOrderForm">
-      <label for="workOrderInput"
-        >Enter Work Order Numbers (comma-separated):</label
-      >
-      <input type="text" id="workOrderInput" required />
-      <button type="button" onclick="checkOccurrences()">
-        Check Occurrences
-      </button>
-    </form>
-
-    <div id="result"></div>
-
-    <h2>Add Resolution to Multiple Work Orders</h2>
-    <form id="resolutionForm">
-      <label for="workOrderIds"
-        >Work Order IDs (comma or space-separated):</label
-      >
-      <input type="text" id="workOrderIds" name="workOrderIds" required />
-      <button type="submit">Submit Resolutions</button>
-    </form>
+<!-- 
     <h1>Check-In Status</h1>
     <button type="button" onclick="checkMissedCheckIns()">
       Check Missed Check-Ins
     </button>
 
-    <div id="result"></div>
+    <h1>Snow Checker</h1>
+
+    <form id="snowForm">
+      <label for="snowIds">Enter Work Order Numbers :</label>
+      <input type="text" id="snowIds" required />
+      <button type="button" onclick="checkSnow()">Check Snow</button>
+    </form> -->
+
     <script>
       function submitForm() {
         const statusIdsInput = document.getElementById("statusIds").value;
 
         const statusIds = statusIdsInput.split(/[\s,]+/).filter(Boolean);
 
+        const status = document.getElementById("status").value;
+        const statuses = status.split("/");
+        const primary = statuses[0];
+        const extended = statuses[1];
+        console.log(primary, extended);
+
         const requestData = {
           status_ids: statusIds,
+          primary: primary,
+          extended: extended,
         };
 
-        fetch("/update_status", {
+        fetch("http://localhost:5000/update_status", {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -96,12 +102,11 @@
           });
       }
       function submitCheckIn() {
-
         const checkInIdsInput = document.getElementById("checkInIds").value;
         const checkInIds = checkInIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("/check_in", {
+          const response = fetch("http://localhost:5000/check_in", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -122,16 +127,20 @@
 
       function submitCheckOut() {
         const checkOutIdsInput = document.getElementById("checkOutIds").value;
-        const checkOutTechsInput = document.getElementById("checkOutTechs").value;
+        const checkOutTechsInput =
+          document.getElementById("checkOutTechs").value;
         const checkOutIds = checkOutIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("/check_out", {
+          const response = fetch("http://localhost:5000/check_out", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ work_order_ids: checkOutIds, tech_count: checkOutTechsInput }),
+            body: JSON.stringify({
+              work_order_ids: checkOutIds,
+              tech_count: checkOutTechsInput,
+            }),
           });
 
           if (response.ok) {
@@ -156,7 +165,7 @@
         console.log(workOrderInput);
         console.log(workOrderNumbers);
         const response = await fetch(
-          "/check_occurrences",
+          "http://localhost:5000/check_occurrences",
           {
             method: "POST",
             headers: {
@@ -194,7 +203,7 @@
         const workOrderIds = workOrderIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = await fetch("/resolution", {
+          const response = await fetch("http://localhost:5000/resolution", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ workOrderIds }),
@@ -216,7 +225,7 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("/days_missed", {
+          const response = await fetch("http://localhost:5000/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -232,6 +241,30 @@
 
       const resultDiv = document.getElementById("result");
       resultDiv.innerHTML = JSON.stringify(result, null, 2);
+
+      function checkSnow() {
+        const snowIdsInput = document.getElementById("snowIds").value;
+        const snowIds = snowIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
+
+        try {
+          const response = fetch("http://localhost:5000/check_snow", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ work_order_ids: snowIds }),
+          });
+
+          if (response.ok) {
+            const result = response.json();
+            console.log("Snow Results:", result);
+          } else {
+            console.error("Error checking snow:", response.statusText);
+          }
+        } catch (error) {
+          console.error("Error checking snow:", error.message);
+        }
+      }
     </script>
   </body>
 </html>

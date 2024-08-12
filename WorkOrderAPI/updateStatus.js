@@ -1,22 +1,22 @@
 const axios = require("axios");
 const { getAccessToken } = require("../Auth/getAccessToken");
 
-const updateStatus = async (workOrderId, accessToken) => {
+const updateStatus = async (workOrderId, accessToken, primary, extended) => {
   const baseUrl = `https://api.servicechannel.com/v3/workorders`;
   const headers = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${accessToken}`,
   };
-
+  console.log(primary, extended + "in update status");
   try {
     const response = await axios.put(
       `${baseUrl}/${workOrderId}/status`,
       {
         Status: {
-          Primary: "COMPLETED",
-          Extended: "PENDING CONFIRMATION",
-        },
+          Primary: primary,
+          Extended: extended,
       },
+    },
       { headers }
     );
     console.log(
