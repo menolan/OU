@@ -28,6 +28,9 @@ app.put("/update_status", async (req, res) => {
   try {
     const accessToken = await getAccessToken();
     const workOrderIds = req.body.status_ids;
+    const primary = req.body.primary;
+    const extended = req.body.extended;
+    console.log(extended + "before processing")
     if (
       !workOrderIds ||
       !Array.isArray(workOrderIds) ||
@@ -44,7 +47,9 @@ app.put("/update_status", async (req, res) => {
       updateStatus,
       accessToken,
       chunkSize,
-      delay
+      delay,
+      primary,
+      extended,
     );
     res.json(results);
   } catch (error) {
@@ -162,14 +167,16 @@ const processInChunks = async (
   accessToken,
   chunkSize,
   delay,
-  techCount
+  techCount,
+  primary,
+  extended
 ) => {
   let results = [];
 
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(
-      chunk.map((item) => processFunction(item, accessToken, techCount))
+      chunk.map((item) => processFunction(item, accessToken, techCount, primary, extended))
     );
     results = [...results, ...chunkResults];
     if (i + chunkSize < items.length) {

@@ -9,8 +9,33 @@
     <h1>Update Status</h1>
 
     <form id="updateStatusForm">
-      <label for="statusIds">Work Order IDs (comma-separated):</label>
+      <label for="statusIds">Work Order IDs:</label>
       <input type="text" id="statusIds" name="statusIds" required />
+      <label for="status">Choose a Status:</label>
+
+      <select name="status" id="status">
+        <option
+          value="IN PROGRESS/INCOMPLETE"
+        >
+          In Progress/Incomplete
+        </option>
+        <option
+          value="IN PROGRESS/DISPATCH CONFIRMED"
+        >
+          In Progress/Dispatch Confirmed
+        </option>
+        <option value="COMPLETED/CANCELLED">
+          Completed/Cancelled
+        </option>
+        <option value="COMPLETED/NO CHARGE">
+          completed/No Charge
+        </option>
+        <option
+          value="COMPLETED/PENDING CONFIRMATION"
+        >
+          Completed/Pending Confirmation
+        </option>
+      </select>
 
       <button type="button" onclick="submitForm()">Update Status</button>
     </form>
@@ -20,7 +45,7 @@
     <h1>Check In</h1>
 
     <form id="checkInForm">
-      <label for="checkInIds">Work Order IDs (comma-separated):</label>
+      <label for="checkInIds">Work Order IDs:</label>
       <input type="text" id="checkInIds" name="checkInIds" required />
 
       <button type="button" onclick="submitCheckIn()">Check In</button>
@@ -29,7 +54,7 @@
     <h1>Check Out</h1>
 
     <form id="checkOutForm">
-      <label for="checkOutIds">Work Order IDs (comma-separated):</label>
+      <label for="checkOutIds">Work Order IDs:</label>
       <input type="text" id="checkOutIds" name="checkOutIds" required />
       <label for="checkOutTechs">Number of Techs (up to 10):</label>
       <input type="text" id="checkOutTechs" name="checkOutTechs" />
@@ -37,33 +62,6 @@
     </form>
 
     <div id="response"></div>
-
-    <h1>Work Order Occurrences Checker</h1>
-
-    <form id="workOrderForm">
-      <label for="workOrderInput">Enter Work Order Numbers :</label>
-      <input type="text" id="workOrderInput" required />
-      <button type="button" onclick="checkOccurrences()">
-        Check Occurrences
-      </button>
-    </form>
-
-    <div id="result"></div>
-
-    <h2>Add Resolution to Multiple Work Orders</h2>
-    <form id="resolutionForm">
-      <label for="workOrderIds"
-        >Work Order IDs (comma or space-separated):</label
-      >
-      <input type="text" id="workOrderIds" name="workOrderIds" required />
-      <button type="submit">Submit Resolutions</button>
-    </form>
-    <h1>Check-In Status</h1>
-    <button type="button" onclick="checkMissedCheckIns()">
-      Check Missed Check-Ins
-    </button>
-
-    <div id="result"></div>
 
     <h1>Snow Checker</h1>
 
@@ -79,8 +77,16 @@
 
         const statusIds = statusIdsInput.split(/[\s,]+/).filter(Boolean);
 
+        const status= document.getElementById("status").value;
+        const statuses = status.split("/")
+        const primary =statuses[0]
+        const extended =statuses[1]
+        console.log(primary, extended)
+
         const requestData = {
           status_ids: statusIds,
+          primary: primary,
+          extended: extended,
         };
 
         fetch("http://localhost:5000/update_status", {
