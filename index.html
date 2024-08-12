@@ -14,25 +14,13 @@
       <label for="status">Choose a Status:</label>
 
       <select name="status" id="status">
-        <option
-          value="IN PROGRESS/INCOMPLETE"
-        >
-          In Progress/Incomplete
-        </option>
-        <option
-          value="IN PROGRESS/DISPATCH CONFIRMED"
-        >
+        <option value="IN PROGRESS/INCOMPLETE">In Progress/Incomplete</option>
+        <option value="IN PROGRESS/DISPATCH CONFIRMED">
           In Progress/Dispatch Confirmed
         </option>
-        <option value="COMPLETED/CANCELLED">
-          Completed/Cancelled
-        </option>
-        <option value="COMPLETED/NO CHARGE">
-          completed/No Charge
-        </option>
-        <option
-          value="COMPLETED/PENDING CONFIRMATION"
-        >
+        <option value="COMPLETED/CANCELLED">Completed/Cancelled</option>
+        <option value="COMPLETED/NO CHARGE">completed/No Charge</option>
+        <option value="COMPLETED/PENDING CONFIRMATION">
           Completed/Pending Confirmation
         </option>
       </select>
@@ -62,6 +50,11 @@
     </form>
 
     <div id="response"></div>
+<!-- 
+    <h1>Check-In Status</h1>
+    <button type="button" onclick="checkMissedCheckIns()">
+      Check Missed Check-Ins
+    </button>
 
     <h1>Snow Checker</h1>
 
@@ -69,7 +62,7 @@
       <label for="snowIds">Enter Work Order Numbers :</label>
       <input type="text" id="snowIds" required />
       <button type="button" onclick="checkSnow()">Check Snow</button>
-    </form>
+    </form> -->
 
     <script>
       function submitForm() {
@@ -77,11 +70,11 @@
 
         const statusIds = statusIdsInput.split(/[\s,]+/).filter(Boolean);
 
-        const status= document.getElementById("status").value;
-        const statuses = status.split("/")
-        const primary =statuses[0]
-        const extended =statuses[1]
-        console.log(primary, extended)
+        const status = document.getElementById("status").value;
+        const statuses = status.split("/");
+        const primary = statuses[0];
+        const extended = statuses[1];
+        console.log(primary, extended);
 
         const requestData = {
           status_ids: statusIds,
