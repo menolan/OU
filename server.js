@@ -7,6 +7,7 @@ const ExcelJS = require("exceljs");
 require("dotenv").config();
 const schedule = require("node-schedule");
 const cron = require("node-cron");
+const { google } = require("googleapis");
 const { getAccessToken } = require("./Auth/getAccessToken.js");
 const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
@@ -17,18 +18,35 @@ const { createHmac, timingSafeEqual } = require("node:crypto");
 
 const app = express();
 
-app.use(bodyParser.json({
-  verify: (req, res, buf, encoding) => {
-    if (buf && buf.length) {
-      req.rawBody = buf.toString(encoding || "utf8");
-    }
-  },
-}));
+app.use(
+  bodyParser.json({
+    verify: (req, res, buf, encoding) => {
+      if (buf && buf.length) {
+        req.rawBody = buf.toString(encoding || "utf8");
+      }
+    },
+  })
+);
 app.use(cors());
 
 const PORT = process.env.PORT;
 
-app.listen(PORT || 4000, () => console.log("Server started..."));
+app.listen(PORT || 5000, () => console.log("Server started..."));
+
+// Load client secrets from a local file.
+const credentials = JSON.parse(fs.readFileSync(process.env.GSERVICE));
+
+const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+
+// Create an auth client
+const auth = new google.auth.GoogleAuth({
+  credentials,
+  scopes: SCOPES,
+});
+
+const sheets = google.sheets({ version: "v4", auth });
+
+const spreadsheetId = process.env.SPREADSHEET;
 
 app.post("/newWO", async (req, res) => {
   const sigHeaderName = "Sign-Data";
@@ -39,20 +57,20 @@ app.post("/newWO", async (req, res) => {
   //Validate payload
   if (req.get(sigHeaderName)) {
     //Extract Signature header
-    console.log(req.get(sigHeaderName), "req.get(sigHeaderName")
+    console.log(req.get(sigHeaderName), "req.get(sigHeaderName");
     const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
-    console.log(req.rawBody, "req.rawBody")
+    console.log(req.rawBody, "req.rawBody");
     //Calculate HMAC
-    console.log(sigHashAlg, "sigHashAlg")
-    console.log(secret, "secret")
+    console.log(sigHashAlg, "sigHashAlg");
+    console.log(secret, "secret");
     const hmac = createHmac(sigHashAlg, secret);
     const digest = Buffer.from(
       hmac.update(req.rawBody).digest("base64"),
       "utf8"
     );
-    console.log(sigHeaderName, "Sig Header Name")
-    console.log(sig, "Sig ")
-    console.log(digest, "digest")
+    console.log(sigHeaderName, "Sig Header Name");
+    console.log(sig, "Sig ");
+    console.log(digest, "digest");
     //Compare HMACs
     if (sig.length !== digest.length || !timingSafeEqual(digest, sig)) {
       return res.status(401).send({
@@ -60,7 +78,41 @@ app.post("/newWO", async (req, res) => {
       });
     }
   }
+  try {
+    const workOrder = req.body.Object; // Access the Object field in the request body
 
+    const values = [
+      [
+        workOrder.Id, // Work Order ID
+        workOrder.Number, // Work Order Number
+        workOrder.Status.Primary, // Work Order Status
+        workOrder.CreatedBy, // Created By
+        workOrder.CallDate_DTO, // Call Date
+        workOrder.Trade, // Trade
+        workOrder.ScheduledDate_DTO, // Scheduled Date
+        workOrder.Description, // Description
+        workOrder.Category, // Category
+        workOrder.Source, // Source
+      ],
+    ];
+
+    const resource = {
+      values,
+    };
+
+    const result = await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: "Sheet1!A2", // Adjust to your specific sheet name and range
+      valueInputOption: "RAW",
+      resource,
+    });
+
+    console.log(`Appended: ${result.data.updates.updatedRange}`);
+    res.status(200).send("Work order added to Google Sheet.");
+  } catch (error) {
+    console.error("Error appending to Google Sheets:", error);
+    res.status(500).send("Error adding work order to Google Sheet.");
+  }
   return res.status(200).json({});
 });
 
@@ -71,7 +123,6 @@ app.put("/update_status", async (req, res) => {
     const workOrderIds = req.body.status_ids;
     const primary = req.body.primary;
     const extended = req.body.extended;
-    console.log(extended + "before processing")
     if (
       !workOrderIds ||
       !Array.isArray(workOrderIds) ||
@@ -90,7 +141,7 @@ app.put("/update_status", async (req, res) => {
       chunkSize,
       delay,
       primary,
-      extended,
+      extended
     );
     res.json(results);
   } catch (error) {
@@ -217,7 +268,9 @@ const processInChunks = async (
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(
-      chunk.map((item) => processFunction(item, accessToken, techCount, primary, extended))
+      chunk.map((item) =>
+        processFunction(item, accessToken, techCount, primary, extended)
+      )
     );
     results = [...results, ...chunkResults];
     if (i + chunkSize < items.length) {
@@ -537,8 +590,6 @@ cron.schedule("32 9 11 5 * ", async () => {
     console.log("All work order checks have been processed.");
   });
 });
-
-
 
 cron.schedule("40 7 11 5 * ", async () => {
   const accessToken = await getAccessToken();
@@ -863,6 +914,21 @@ async function fetchDataInChunksWithDelay(
 }
 
 // fetchDataById();
+
+app.get("/delete_images", async (req, res) => {
+  const accessToken = await getAccessToken();
+  const workOrderIds = req.body.status_ids;
+
+  if (
+    !workOrderIds ||
+    !Array.isArray(workOrderIds) ||
+    workOrderIds.length === 0
+  ) {
+    return res
+      .status(400)
+      .json({ error: "Invalid work_order_ids in the request body" });
+  }
+});
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
