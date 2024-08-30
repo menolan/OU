@@ -36,17 +36,17 @@ app.listen(PORT || 5000, () => console.log("Server started..."));
 // // Load client secrets from a local file.
 // const credentials = JSON.parse(process.env.GSERVICE);
 
-const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
+// const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
-// Create an auth client
-const auth = new google.auth.GoogleAuth({
-  credentials,
-  scopes: SCOPES,
-});
+// // Create an auth client
+// const auth = new google.auth.GoogleAuth({
+//   credentials,
+//   scopes: SCOPES,
+// });
 
-const sheets = google.sheets({ version: "v4", auth });
+// const sheets = google.sheets({ version: "v4", auth });
 
-const spreadsheetId = process.env.SPREADSHEET;
+// const spreadsheetId = process.env.SPREADSHEET;
 
 app.post("/newWO", async (req, res) => {
   const sigHeaderName = "Sign-Data";
