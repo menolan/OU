@@ -34,7 +34,7 @@ const PORT = process.env.PORT;
 app.listen(PORT || 5000, () => console.log("Server started..."));
 
 // Load client secrets from a local file.
-const credentials = JSON.parse(fs.readFileSync(process.env.GSERVICE));
+const credentials = JSON.parse(process.env.GSERVICE);
 
 const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
 
