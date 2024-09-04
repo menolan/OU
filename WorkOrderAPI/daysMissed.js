@@ -67,7 +67,7 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
 
 function getDatesForDaysOfWeek(daysOfWeekNum) {
   const currentDate = new Date();
-  const startDate = new Date(currentDate.getFullYear(), 6, 29);
+  const startDate = new Date(currentDate.getFullYear(), 7, 26);
 
   const dates = [];
 

@@ -78,41 +78,41 @@ app.post("/newWO", async (req, res) => {
       });
     }
   }
-  try {
-    const workOrder = req.body.Object; // Access the Object field in the request body
+  // try {
+  //   const workOrder = req.body.Object; // Access the Object field in the request body
 
-    const values = [
-      [
-        workOrder.Id, // Work Order ID
-        workOrder.Number, // Work Order Number
-        workOrder.Status.Primary, // Work Order Status
-        workOrder.CreatedBy, // Created By
-        workOrder.CallDate_DTO, // Call Date
-        workOrder.Trade, // Trade
-        workOrder.ScheduledDate_DTO, // Scheduled Date
-        workOrder.Description, // Description
-        workOrder.Category, // Category
-        workOrder.Source, // Source
-      ],
-    ];
+  //   const values = [
+  //     [
+  //       workOrder.Id, // Work Order ID
+  //       workOrder.Number, // Work Order Number
+  //       workOrder.Status.Primary, // Work Order Status
+  //       workOrder.CreatedBy, // Created By
+  //       workOrder.CallDate_DTO, // Call Date
+  //       workOrder.Trade, // Trade
+  //       workOrder.ScheduledDate_DTO, // Scheduled Date
+  //       workOrder.Description, // Description
+  //       workOrder.Category, // Category
+  //       workOrder.Source, // Source
+  //     ],
+  //   ];
 
-    const resource = {
-      values,
-    };
+  //   const resource = {
+  //     values,
+  //   };
 
-    const result = await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: "Sheet1!A2", // Adjust to your specific sheet name and range
-      valueInputOption: "RAW",
-      resource,
-    });
+  //   const result = await sheets.spreadsheets.values.append({
+  //     spreadsheetId,
+  //     range: "Sheet1!A2", // Adjust to your specific sheet name and range
+  //     valueInputOption: "RAW",
+  //     resource,
+  //   });
 
-    console.log(`Appended: ${result.data.updates.updatedRange}`);
-    res.status(200).send("Work order added to Google Sheet.");
-  } catch (error) {
-    console.error("Error appending to Google Sheets:", error);
-    res.status(500).send("Error adding work order to Google Sheet.");
-  }
+  //   console.log(`Appended: ${result.data.updates.updatedRange}`);
+  //   res.status(200).send("Work order added to Google Sheet.");
+  // } catch (error) {
+  //   console.error("Error appending to Google Sheets:", error);
+  //   res.status(500).send("Error adding work order to Google Sheet.");
+  // }
   return res.status(200).json({});
 });
 
@@ -392,7 +392,7 @@ async function readAndGroupExcelFile(excelPath) {
   const groups = {};
   worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
     if (rowNumber > 1) {
-      const missedDaysId = row.getCell(25).value;
+      const missedDaysId = row.getCell(26).value;
       const daysOfWeek = row.getCell(5).value;
       const sweepingSubs = row.getCell(10).value;
 
