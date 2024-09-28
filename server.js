@@ -3,6 +3,8 @@ const axios = require("axios");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const fs = require("fs");
+const multer = require("multer");
+const FormData = require("form-data");
 const ExcelJS = require("exceljs");
 require("dotenv").config();
 const schedule = require("node-schedule");
@@ -13,11 +15,13 @@ const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
 const { checkOut } = require("./WorkOrderAPI/checkOut");
 const { daysMissed } = require("./WorkOrderAPI/daysMissed.js");
+const { checkPhotos } = require("./WorkOrderAPI/checkPhotos.js");
 const path = require("path");
 const { createHmac, timingSafeEqual } = require("node:crypto");
 
 const app = express();
 
+app.use(express.urlencoded({ extended: true }));
 app.use(
   bodyParser.json({
     verify: (req, res, buf, encoding) => {
@@ -29,9 +33,29 @@ app.use(
 );
 app.use(cors());
 
+// Multer storage configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // Set your destination folder for uploads
+  },
+  filename: function (req, file, cb) {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// Middleware to handle multiple files
+const uploadFiles = upload.array("files", 50);
+
 const PORT = process.env.PORT;
 
 app.listen(PORT || 5000, () => console.log("Server started..."));
+
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
 // // Load client secrets from a local file.
 // const credentials = JSON.parse(process.env.GSERVICE);
@@ -253,6 +277,106 @@ app.post("/check_out", async (req, res) => {
   }
 });
 
+app.post("/check_photos", async (req, res) => {
+  try {
+    const accessToken = await getAccessToken();
+    const workOrderIds = req.body.work_order_ids;
+    console.log(workOrderIds, "in check_photos route");
+    if (
+      !workOrderIds ||
+      !Array.isArray(workOrderIds) ||
+      workOrderIds.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Invalid work_order_ids in the request body" });
+    }
+    const chunkSize = 100; // Process 100 work orders at a time
+    const delay = 45000; // 45 seconds delay between chunks
+    const results = await processInChunks(
+      workOrderIds,
+      checkPhotos,
+      accessToken,
+      chunkSize,
+      delay
+    );
+    console.table(
+      results.map((result) => ({
+        "Work Order ID": result.workOrderId,
+        "Store Number": result.storeNumber,
+        City: result.city,
+        State: result.state,
+        "Has Duplicates": result.hasDuplicates ? "Yes" : "No",
+      }))
+    );
+
+    res.json(results);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
+  }
+});
+
+app.post("/add_photos/:workorderId", async (req, res) => {
+  const workorderId = req.params.workorderId;
+  const accessToken = await getAccessToken();
+
+  // Handle file upload locally
+  uploadFiles(req, res, async (err) => {
+    if (err) {
+      return res
+        .status(400)
+        .send({ message: "Error uploading files", error: err.message });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).send({ message: "No files were uploaded" });
+    }
+
+    try {
+      // Send each file to the external API
+      const fileUploadPromises = req.files.map((file) => {
+        // Create form data to send to external API
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(file.path)); // Attach file
+        // Set the headers, including content type for form-data
+        const headers = {
+          ...formData.getHeaders(),
+          Authorization: `Bearer ${accessToken}`, // Replace with your API token
+        };
+
+        // Make the POST request to the external API
+        const url = `https://api.servicechannel.com/v3/workorders/${workorderId}/attachments`;
+
+        return axios.post(url, formData, { headers });
+      });
+
+      // Wait for all file uploads to complete
+      await Promise.all(fileUploadPromises);
+
+      // Send a success response after all files are uploaded
+      res.status(200).send({
+        message: "Files uploaded successfully to the external API",
+        files: req.files.map((file) => file.filename),
+      });
+    } catch (err) {
+      console.error("Error uploading files to external API:", err);
+      res.status(500).send({
+        message: "Failed to upload files to external API",
+        error: err.message,
+      });
+    } finally {
+      // Clean up: delete uploaded files from local storage
+      req.files.forEach((file) => {
+        fs.unlink(file.path, (unlinkErr) => {
+          if (unlinkErr) console.error("Error deleting file:", file.path);
+        });
+      });
+    }
+  });
+});
+
 const processInChunks = async (
   items,
   processFunction,
@@ -264,7 +388,6 @@ const processInChunks = async (
   extended
 ) => {
   let results = [];
-
   for (let i = 0; i < items.length; i += chunkSize) {
     const chunk = items.slice(i, i + chunkSize);
     const chunkResults = await Promise.all(

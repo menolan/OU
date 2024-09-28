@@ -55,7 +55,30 @@
     <button type="button" onclick="checkMissedCheckIns()">
       Check Missed Check-Ins
     </button>
-<!-- 
+
+    <h2>Upload Photos to Work Order</h2>
+    <form id="photoUploadForm" enctype="multipart/form-data">
+      <label for="workorderId">Work Order ID:</label>
+      <input
+        type="text"
+        id="workorderId"
+        name="workorderId"
+        required
+      /><br /><br />
+
+      <label for="files">Choose files:</label>
+      <input
+        type="file"
+        id="files"
+        name="files"
+        accept="image/*"
+        multiple
+        required
+      /><br /><br />
+
+      <button type="submit" onclick="addPhotos()">Upload Photos</button>
+    </form>
+    <!-- 
     <h1>Snow Checker</h1>
 
     <form id="snowForm">
@@ -63,6 +86,13 @@
       <input type="text" id="snowIds" required />
       <button type="button" onclick="checkSnow()">Check Snow</button>
     </form> -->
+
+    <h1>Photo Duplicates Check</h1>
+    <form id="photoForm">
+      <label for="photoCheck">Enter Work Order Numbers</label>
+      <input type="text" id="photoIds" required />
+      <button type="button" onclick="photoCheck()">Check Photos</button>
+    </form>
 
     <script>
       function submitForm() {
@@ -164,16 +194,13 @@
         }
         console.log(workOrderInput);
         console.log(workOrderNumbers);
-        const response = await fetch(
-          "/check_occurrences",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ workOrderIds: workOrderNumbers }),
-          }
-        );
+        const response = await fetch("/check_occurrences", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ workOrderIds: workOrderNumbers }),
+        });
 
         if (!response.ok) {
           const error = await response.json();
@@ -263,6 +290,68 @@
           }
         } catch (error) {
           console.error("Error checking snow:", error.message);
+        }
+      }
+      function addPhotos() {
+        document
+          .getElementById("photoUploadForm")
+          .addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const formData = new FormData();
+            const workorderId = document.getElementById("workorderId").value;
+            const files = document.getElementById("files").files;
+
+            formData.append("workorderId", workorderId);
+
+            // Append all selected files
+            for (let i = 0; i < files.length; i++) {
+              formData.append("files", files[i]);
+            }
+
+            try {
+              const response = await fetch(
+                `http://localhost:5000/add_photos/${workorderId}`,
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
+
+              if (response.ok) {
+                alert("Photos uploaded successfully");
+              } else {
+                const errorData = await response.json();
+                alert(`Error: ${errorData.message}`);
+              }
+            } catch (error) {
+              console.error("Upload failed", error);
+              alert("Upload failed");
+            }
+          });
+      }
+
+      function photoCheck() {
+        const photoIdsInput = document.getElementById("photoIds").value;
+        const photoIds = photoIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
+
+        try {
+          const response = fetch("http://localhost:5000/check_photos", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ work_order_ids: photoIds }),
+          });
+
+          if (response.ok) {
+            const result = response.json();
+            console.log("Photo Results:", result);
+          } else {
+            console.error("Error checking photos:", response.statusText);
+          }
+        } catch (error) {
+          console.error("Error checking photos:", error.message);
         }
       }
     </script>
