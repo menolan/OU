@@ -35,7 +35,15 @@ const checkPhotos = async (workOrderId, accessToken) => {
       `${baseUrl}(${workOrderId})/attachments`,
       requestOptions
     );
-    const names = response.data.value.map((item) => item.Name);
+    const attachments = response.data.value;
+
+    // Sort attachments by creation date (descending) and select the 3 most recent
+    const recentAttachments = attachments
+      .sort((a, b) => new Date(b.CreatedDate) - new Date(a.CreatedDate))
+      .slice(0, 3);
+
+    const names = recentAttachments.map((item) => item.Name);
+
     // Check for duplicates
     const duplicates = names.filter(
       (name, index) => names.indexOf(name) !== index
@@ -43,7 +51,7 @@ const checkPhotos = async (workOrderId, accessToken) => {
     const hasDuplicates = duplicates.length > 0;
 
     // Log or return the results
-    console.log("All Names:", names);
+    console.log("Most Recent Names:", names);
     console.log("Duplicate Names:", [...new Set(duplicates)]);
     console.log(`Work order ${workOrderId} has duplicates: ${hasDuplicates}`);
 
