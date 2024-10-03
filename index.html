@@ -252,7 +252,7 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("http://localhost:5000/days_missed", {
+          const response = await fetch("/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -311,7 +311,7 @@
 
             try {
               const response = await fetch(
-                `http://localhost:5000/add_photos/${workorderId}`,
+                `/add_photos/${workorderId}`,
                 {
                   method: "POST",
                   body: formData,
@@ -336,7 +336,7 @@
         const photoIds = photoIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("http://localhost:5000/check_photos", {
+          const response = fetch("/check_photos", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
