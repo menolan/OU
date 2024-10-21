@@ -515,7 +515,7 @@ async function readAndGroupExcelFile(excelPath) {
   const groups = {};
   worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
     if (rowNumber > 1) {
-      const missedDaysId = row.getCell(26).value;
+      const missedDaysId = row.getCell(27).value;
       const daysOfWeek = row.getCell(5).value;
       const sweepingSubs = row.getCell(10).value;
 
@@ -535,7 +535,7 @@ app.get("/days_missed", async (req, res) => {
     const accessToken = await getAccessToken();
 
     // Assuming the excelPath is correctly provided or determined here
-    const excelPath = "Sweeping_and_Portering_work_orders_2024.xlsx";
+    const excelPath = "Sweeping_and_Portering_work_orders_2024_V1.xlsx";
     const groups = await readAndGroupExcelFile(excelPath);
     const chunkSize = 50; // Process 100 work orders at a time
     const delay = 45000; // 45 seconds delay between chunks
