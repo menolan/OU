@@ -19,7 +19,7 @@
           In Progress/Dispatch Confirmed
         </option>
         <option value="COMPLETED/CANCELLED">Completed/Cancelled</option>
-        <option value="COMPLETED/NO CHARGE">completed/No Charge</option>
+        <option value="COMPLETED/NO CHARGE">Completed/No Charge</option>
         <option value="COMPLETED/PENDING CONFIRMATION">
           Completed/Pending Confirmation
         </option>
@@ -252,7 +252,7 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("http://localhost:5000/days_missed", {
+          const response = await fetch("/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
@@ -317,13 +317,10 @@
         }
 
         try {
-          const response = await fetch(
-            `http://localhost:5000/add_photos/${workorderId}`,
-            {
-              method: "POST",
-              body: formData,
-            }
-          );
+          const response = await fetch(`/add_photos/${workorderId}`, {
+            method: "POST",
+            body: formData,
+          });
 
           if (response.ok) {
             alert("Photos uploaded successfully");
@@ -342,7 +339,7 @@
         const photoIds = photoIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("http://localhost:5000/check_photos", {
+          const response = fetch("/check_photos", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
