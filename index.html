@@ -293,42 +293,48 @@
         }
       }
       function addPhotos() {
-        document
-          .getElementById("photoUploadForm")
-          .addEventListener("submit", async function (event) {
-            event.preventDefault();
+        const form = document.getElementById("photoUploadForm");
 
-            const formData = new FormData();
-            const workorderId = document.getElementById("workorderId").value;
-            const files = document.getElementById("files").files;
+        // Remove any previous event listener before adding a new one
+        form.removeEventListener("submit", handleFormSubmit);
 
-            formData.append("workorderId", workorderId);
+        // Add the event listener for form submission
+        form.addEventListener("submit", handleFormSubmit);
+      }
 
-            // Append all selected files
-            for (let i = 0; i < files.length; i++) {
-              formData.append("files", files[i]);
+      async function handleFormSubmit(event) {
+        event.preventDefault();
+
+        const formData = new FormData();
+        const workorderId = document.getElementById("workorderId").value;
+        const files = document.getElementById("files").files;
+
+        formData.append("workorderId", workorderId);
+
+        // Append all selected files
+        for (let i = 0; i < files.length; i++) {
+          formData.append("files", files[i]);
+        }
+
+        try {
+          const response = await fetch(
+            `http://localhost:5000/add_photos/${workorderId}`,
+            {
+              method: "POST",
+              body: formData,
             }
+          );
 
-            try {
-              const response = await fetch(
-                `http://localhost:5000/add_photos/${workorderId}`,
-                {
-                  method: "POST",
-                  body: formData,
-                }
-              );
-
-              if (response.ok) {
-                alert("Photos uploaded successfully");
-              } else {
-                const errorData = await response.json();
-                alert(`Error: ${errorData.message}`);
-              }
-            } catch (error) {
-              console.error("Upload failed", error);
-              alert("Upload failed");
-            }
-          });
+          if (response.ok) {
+            alert("Photos uploaded successfully");
+          } else {
+            const errorData = await response.json();
+            alert(`Error: ${errorData.message}`);
+          }
+        } catch (error) {
+          console.error("Upload failed", error);
+          alert("Upload failed");
+        }
       }
 
       function photoCheck() {
