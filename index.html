@@ -252,15 +252,36 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("/days_missed", {
+          const response = await fetch("http://localhost:5000/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
             },
           });
+          // Check if the response is successful
+          if (!response.ok) {
+            throw new Error(`Error: ${response.statusText}`);
+          }
+
+          // Convert the response to a Blob
+          const blob = await response.blob();
+
+          // Create a URL for the Blob and initiate the download
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.style.display = "none";
+          a.href = url;
+          a.download = "missed_dates.xlsx"; // Set the filename here
+
+          // Append the anchor to the body, click it to trigger the download, then remove it
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          // Clean up the URL object
+          window.URL.revokeObjectURL(url);
         } catch (error) {
-          console.error("Error:", error);
-          alert("Error getting missed days.");
+          console.error("File download failed:", error);
         }
       }
 

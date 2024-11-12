@@ -10,6 +10,7 @@ require("dotenv").config();
 const schedule = require("node-schedule");
 const cron = require("node-cron");
 const { google } = require("googleapis");
+const { auth } = require("google-auth-library");
 const { getAccessToken } = require("./Auth/getAccessToken.js");
 const { updateStatus } = require("./WorkOrderAPI/updateStatus");
 const { checkIn } = require("./WorkOrderAPI/checkIn");
@@ -56,21 +57,6 @@ const uploadDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
-
-// // Load client secrets from a local file.
-// const credentials = JSON.parse(process.env.GSERVICE);
-
-// const SCOPES = ["https://www.googleapis.com/auth/spreadsheets"];
-
-// // Create an auth client
-// const auth = new google.auth.GoogleAuth({
-//   credentials,
-//   scopes: SCOPES,
-// });
-
-// const sheets = google.sheets({ version: "v4", auth });
-
-// const spreadsheetId = process.env.SPREADSHEET;
 
 app.post("/newWO", async (req, res) => {
   const sigHeaderName = "Sign-Data";
@@ -507,17 +493,43 @@ async function countOccurrencesForIdList(idList) {
   return results;
 }
 
-async function readAndGroupExcelFile(excelPath) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(excelPath);
-  const worksheet = workbook.getWorksheet(1); // Assuming data is in the first worksheet
-
+// Handle GET request to check missed check-ins
+app.get("/days_missed", async (req, res) => {
   const groups = {};
-  worksheet.eachRow({ includeEmpty: false }, function (row, rowNumber) {
-    if (rowNumber > 1) {
-      const missedDaysId = row.getCell(27).value;
-      const daysOfWeek = row.getCell(5).value;
-      const sweepingSubs = row.getCell(10).value;
+  const SPREADSHEET_ID = process.env.SWEEP_WO_SHEET;
+
+  try {
+    // load the environment variable with our keys
+    const keysEnvVar = process.env["CREDS"];
+    if (!keysEnvVar) {
+      throw new Error("The $CREDS environment variable was not found!");
+    }
+    const keys = JSON.parse(keysEnvVar);
+
+    // load the JWT or UserRefreshClient from the keys
+    const client = auth.fromJSON(keys);
+    client.scopes = ["https://www.googleapis.com/auth/spreadsheets"];
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=N2%3AN148&ranges=E2%3AE148&ranges=J2%3AJ148&valueRenderOption=FORMATTED_VALUE&key=${process.env.API_KEY}`;
+    const data = await client.request({ url });
+
+    // Check if valueRanges exists and has expected data
+    const missedDaysIds = data.data.valueRanges?.[0]?.values || [];
+    const daysOfWeeks = data.data.valueRanges?.[1]?.values || [];
+    const sweepingSubsList = data.data.valueRanges?.[2]?.values || [];
+
+    if (
+      !missedDaysIds.length ||
+      !daysOfWeeks.length ||
+      !sweepingSubsList.length
+    ) {
+      throw new Error("One or more ranges returned empty values.");
+    }
+
+    // Loop through data and group by sweepingSubs
+    for (let i = 0; i < missedDaysIds.length; i++) {
+      const missedDaysId = missedDaysIds[i][0];
+      const daysOfWeek = daysOfWeeks[i][0];
+      const sweepingSubs = sweepingSubsList[i][0];
 
       if (!groups[sweepingSubs]) {
         groups[sweepingSubs] = [];
@@ -525,19 +537,10 @@ async function readAndGroupExcelFile(excelPath) {
 
       groups[sweepingSubs].push({ missedDaysId, daysOfWeek });
     }
-  });
-  return groups;
-}
-
-// Handle GET request to check missed check-ins
-app.get("/days_missed", async (req, res) => {
-  try {
+    console.log("Groups formed:", groups);
     const accessToken = await getAccessToken();
 
-    // Assuming the excelPath is correctly provided or determined here
-    const excelPath = "Sweeping_and_Portering_work_orders_2024_V1.xlsx";
-    const groups = await readAndGroupExcelFile(excelPath);
-    const chunkSize = 50; // Process 100 work orders at a time
+    const chunkSize = 50; // Process 50 work orders at a time
     const delay = 45000; // 45 seconds delay between chunks
     const groupResults = await processInChunksSubs(
       groups,
@@ -546,7 +549,10 @@ app.get("/days_missed", async (req, res) => {
       chunkSize,
       delay
     );
-    // Create a new Excel workbook
+
+    console.log("Starting Excel file creation...");
+
+    // Create a new Excel workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Missed Dates");
 
@@ -560,9 +566,10 @@ app.get("/days_missed", async (req, res) => {
       },
       { header: "Check-In Dates (MM/DD)", key: "checkInDates", width: 30 },
       { header: "Missed Dates (MM/DD)", key: "missedDates", width: 30 },
-      { header: "Sweeping Subs", key: "sweepingSubs", width: 30 }, // New column for Sweeping Subs
+      { header: "Sweeping Subs", key: "sweepingSubs", width: 30 },
     ];
 
+    // Populate the worksheet with data
     Object.entries(groupResults).forEach(([groupName, workOrders]) => {
       workOrders.forEach((workOrder) => {
         worksheet.addRow({
@@ -570,34 +577,30 @@ app.get("/days_missed", async (req, res) => {
           totalExpectedCheckIns: workOrder.totalExpectedCheckIns,
           checkInDates: workOrder.checkInDates.join(", "),
           missedDates: workOrder.missedDates.join(", "),
-          sweepingSubs: groupName, // Assuming you want to label each row with its group name
+          sweepingSubs: groupName,
         });
       });
     });
 
-    // Then, write the Excel file as before
-    const excelFileName = "missed_dates.xlsx";
-    const filePath = `./${excelFileName}`;
-
-    await workbook.xlsx.writeFile(filePath);
-    console.log(`Excel file written to ${filePath}`);
-
-    // Set headers and stream the file
-    res.setHeader(
+    // Write the workbook to a buffer and send as a downloadable response
+    const buffer = await workbook.xlsx.writeBuffer();
+    console.log("Buffer written. Sending file to client...");
+    res.set(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${excelFileName}`
-    );
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    res.set("Content-Disposition", "attachment; filename=missed_dates.xlsx");
+
+    res.send(buffer); // Ensure send completes
+
+    console.log("File successfully sent!");
   } catch (error) {
     console.error("Failed to create or send Excel file:", error);
-    res
-      .status(500)
-      .json({ error: "Internal server error", details: error.message });
+    if (!res.headersSent) {
+      return res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
+    }
   }
 });
 
