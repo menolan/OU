@@ -590,6 +590,7 @@ app.get("/days_missed", async (req, res) => {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.set("Content-Disposition", "attachment; filename=missed_dates.xlsx");
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate")
 
     res.send(buffer); // Ensure send completes
 
