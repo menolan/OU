@@ -6,6 +6,7 @@ const fs = require("fs");
 const multer = require("multer");
 const FormData = require("form-data");
 const ExcelJS = require("exceljs");
+const nodemailer = require("nodemailer");
 require("dotenv").config();
 const schedule = require("node-schedule");
 const cron = require("node-cron");
@@ -124,6 +125,266 @@ app.post("/newWO", async (req, res) => {
   //   res.status(500).send("Error adding work order to Google Sheet.");
   // }
   return res.status(200).json({});
+});
+
+const generateEml = (emailContent) => {
+  return new Promise((resolve, reject) => {
+    const transporter = nodemailer.createTransport({
+      streamTransport: true,
+      newline: "unix",
+    });
+
+    transporter.sendMail(emailContent, (err, info) => {
+      if (err) {
+        return reject(err);
+      }
+
+      // `info.message` is a stream. Capture its content.
+      let emlContent = "";
+      info.message.on("data", (chunk) => {
+        emlContent += chunk.toString();
+      });
+
+      info.message.on("end", () => {
+        resolve(emlContent); // Resolve the complete content as a string
+      });
+
+      info.message.on("error", (streamErr) => {
+        reject(streamErr); // Handle stream errors
+      });
+    });
+  });
+};
+
+app.post("/generate-emails", upload.single("excelFile"), async (req, res) => {
+  try {
+    console.log("In email generator");
+    const filePath = req.file.path;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+
+    const worksheet = workbook.getWorksheet(1); // Get the first sheet
+    const data = [];
+
+    // Read Excel rows and convert to JSON
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip the header row
+      const rowData = {
+        Email: row.getCell(11).value,
+        Field1: {
+          value: row.getCell(1).value,
+          style: row.getCell(1).style || {},
+        },
+        Field2: {
+          value: row.getCell(2).value,
+          style: row.getCell(2).style || {},
+        },
+        Field3: {
+          value: row.getCell(3).value,
+          style: row.getCell(3).style || {},
+        },
+        Field4: {
+          value: row.getCell(4).value,
+          style: row.getCell(4).style || {},
+        },
+        Field5: {
+          value: row.getCell(6).value,
+          style: row.getCell(6).style || {},
+        },
+        Field6: {
+          value: row.getCell(9).value,
+          style: row.getCell(9).style || {},
+        },
+        Field7: {
+          value: row.getCell(29).value,
+          style: row.getCell(29).style || {},
+        },
+      };
+      data.push(rowData);
+    });
+
+    // Group data by email
+    const groupedData = data.reduce((acc, row) => {
+      const email = row.Email;
+      if (!acc[email]) {
+        acc[email] = [];
+      }
+      acc[email].push(row);
+      return acc;
+    }, {});
+
+    // Create a folder for generated emails
+    const outputDir = path.join(__dirname, "generated_emails");
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir);
+    }
+
+    // Helper function to generate inline styles
+    const generateInlineStyle = (style) => {
+      const styles = [];
+
+      if (style.font) {
+        if (style.font.color) {
+          const color = style.font.color.rgb
+            ? `#${style.font.color.rgb.slice(2)}`
+            : "";
+          styles.push(`color: ${color}`);
+        }
+        if (style.font.bold) styles.push("font-weight: bold");
+        if (style.font.italic) styles.push("font-style: italic");
+      }
+
+      if (style.fill && style.fill.fgColor) {
+        const bgColor = style.fill.fgColor.rgb
+          ? `#${style.fill.fgColor.rgb.slice(2)}`
+          : "";
+        styles.push(`background-color: ${bgColor}`);
+      }
+
+      return styles.join("; ");
+    };
+
+    const outlookSignature = `
+      <br>
+      
+      <p><strong>Matt Nolan</strong></p>
+      <p>Administrative Account Manager</p>
+      <br>
+      <p>Outside Unlimited</p>
+      <a href="http://www.outsideunlimited.com/">www.outsideunlimited.com</a>
+
+      <br>
+      <p>Administrative Offices</p>
+      <p>2 Whitney Rd Suite 21</p>
+      <p>Concord, NH 03301</p>
+      <p>Phone: 1-800-609-1411</p>
+      <p>Cell: 1-860-573-8842</p>
+    `;
+
+    // Generate .eml files
+    for (const email in groupedData) {
+      const rows = groupedData[email];
+      const tableRows = rows
+        .map((row) => {
+          const fields = [
+            row.Field1,
+            row.Field2,
+            row.Field3,
+            row.Field4,
+            row.Field5,
+            row.Field6,
+            row.Field7,
+          ];
+
+          const cells = fields.map((field) => {
+            const inlineStyle = generateInlineStyle(field.style);
+            let cellValue;
+
+            if (field.name === "Field6") {
+              // Insert static value for Field6
+              cellValue = "This is a static value for Field6";
+            } else {
+              // Use dynamic value for other fields
+              cellValue = String(field.value || "")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;"); // Escape special characters
+            }
+
+            return `<td style="${inlineStyle}">${cellValue}</td>`;
+          });
+
+          return `<tr>${cells.join("")}</tr>`;
+        })
+        .join("");
+
+      const tableHTML = `
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+          <tr>
+            <th>Store</th>
+            <th>Address</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Number of Weekly Sweeps</th>
+            <th>Sweeping Schedule</th>
+            <th>January 2024 Work Orders</th>
+          </tr>
+           ${rows
+             .map(
+               (row) => `
+        <tr>
+          <td>${row.Field1}</td>
+          <td>${row.Field2}</td>
+          <td>${row.Field3}</td>
+          <td>${row.Field4}</td>
+          <td>${row.Field5}</td>
+          <td><p style="font-weight: bold; color: red;">should be clean mornings of</p>
+  <ul style="list-style-type: none; padding: 0;">
+    <li>2 days a week - TU, SA</li>
+    <li>3 days a week - TU, TH, SA</li>
+    <li>4 days a week - TU, TH, SA, SU</li>
+    <li>5 days a week - M, TU, TH, SA, SU</li>
+    <li>6 days a week - M, TU, TH, FR, SA, SU</li>
+    <li>7 days a week - M, TU, W, TH, FR, SA, SU</li>
+  </ul></td>
+          <td>${row.Field7}</td>
+        </tr>`
+             )
+             .join("")}
+  </table>
+      `;
+
+      const emailContent = {
+        from: "matt.nolan@outsideunlimited.com",
+        to: email,
+        cc: [
+          "jonah@outsideunlimited.com",
+          "greg.schuler@outsideunlimited.com",
+          "officemgr@outsideunlimited.com",
+        ],
+        subject: "Sweeping Work Orders 12/23 to 2/2",
+        html: `
+          <p>Here are the sweeping work orders for December 23rd through February 2nd. The WOs will be invoiced for those dates. Please start using these numbers for Sunday night into Monday morning sweeps. <br><br>Remember all crews must check in and out on every visit. Otherwise, HD corporate will not pay for service. If you need any help with the app reach out to your account manager. Let me know if you have any questions.</p>
+          <br>
+          ${tableHTML}
+          <br>
+          <p>Thank you,</p>
+          <br>
+          ${outlookSignature}
+        `,
+      };
+
+      const emlContent = await generateEml(emailContent);
+
+      const sanitizeFileName = (email) =>
+        email.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const fileName = `email_to_${sanitizeFileName(email)}.eml`;
+      const filePath = path.join(outputDir, fileName);
+
+      fs.writeFileSync(filePath, emlContent, "utf8"); // Write the .eml content
+      console.log(`EML file written: ${filePath}`);
+    }
+
+    res.send(
+      "Emails generated successfully. Check the `generated_emails` folder."
+    );
+  } catch (err) {
+    console.error("Error generating emails:", err.message);
+    res.status(500).send("An error occurred.");
+  }
+});
+
+// Endpoint to serve generated .eml files
+app.get("/download/:fileName", (req, res) => {
+  const filePath = path.join(
+    __dirname,
+    "generated_emails",
+    req.params.fileName
+  );
+  if (fs.existsSync(filePath)) {
+    res.download(filePath);
+  } else {
+    res.status(404).send("File not found");
+  }
 });
 
 // PUT endpoint to update status for multiple objects
@@ -590,7 +851,7 @@ app.get("/days_missed", async (req, res) => {
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     res.set("Content-Disposition", "attachment; filename=missed_dates.xlsx");
-    res.set("Cache-Control", "no-cache, no-store, must-revalidate")
+    res.set("Cache-Control", "no-cache, no-store, must-revalidate");
 
     res.send(buffer); // Ensure send completes
 

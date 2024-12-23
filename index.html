@@ -78,14 +78,14 @@
 
       <button type="submit" onclick="addPhotos()">Upload Photos</button>
     </form>
-    <!-- 
+
     <h1>Snow Checker</h1>
 
     <form id="snowForm">
       <label for="snowIds">Enter Work Order Numbers :</label>
       <input type="text" id="snowIds" required />
       <button type="button" onclick="checkSnow()">Check Snow</button>
-    </form> -->
+    </form>
 
     <h1>Photo Duplicates Check</h1>
     <form id="photoForm">
@@ -93,6 +93,16 @@
       <input type="text" id="photoIds" required />
       <button type="button" onclick="photoCheck()">Check Photos</button>
     </form>
+
+    <h1>Upload Excel File to Generate Emails</h1>
+    <form id="generateEmailForm">
+      <input type="file" name="excelFile" required />
+      <button type="submit" onClick="generateEmail()">Generate Emails</button>
+    </form>
+    </form>
+
+    <h2>Generated Emails:</h2>
+    <ul id="fileList"></ul>
 
     <script>
       function submitForm() {
@@ -295,7 +305,7 @@
         const snowIds = snowIdsInput.split(/[\s,]+/).filter(Boolean); // Split by comma/space and remove empty entries
 
         try {
-          const response = fetch("/check_snow", {
+          const response = fetch("http://localhost:5000/check_snow", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -377,6 +387,37 @@
         } catch (error) {
           console.error("Error checking photos:", error.message);
         }
+      }
+      function generateEmail() {
+        document
+          .getElementById("generateEmailForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault(); // Stop the page reload
+
+            const formData = new FormData(e.target); // Get the form data
+
+            try {
+              const response = await fetch(
+                "http://localhost:5000/generate-emails",
+                {
+                  method: "POST",
+                  body: formData,
+                }
+              );
+
+              if (response.ok) {
+                const result = await response.json();
+                alert(`Emails generated: ${result.generatedFiles.join(", ")}`);
+              } else {
+                alert(
+                  "Failed to generate emails. Check server logs for details."
+                );
+              }
+            } catch (error) {
+              console.error("Error uploading file:", error);
+              alert("An error occurred while generating emails.");
+            }
+          });
       }
     </script>
   </body>
