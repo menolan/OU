@@ -812,7 +812,7 @@ app.get("/days_missed", async (req, res) => {
     );
 
     console.log("Starting Excel file creation...");
-
+    console.log("Group Results:", JSON.stringify(groupResults, null, 2));
     // Create a new Excel workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Missed Dates");
@@ -836,8 +836,12 @@ app.get("/days_missed", async (req, res) => {
         worksheet.addRow({
           workOrderId: workOrder.workOrderId,
           totalExpectedCheckIns: workOrder.totalExpectedCheckIns,
-          checkInDates: workOrder.checkInDates.join(", "),
-          missedDates: workOrder.missedDates.join(", "),
+          checkInDates: workOrder.checkInDates
+            ? workOrder.checkInDates.join(", ")
+            : "N/A",
+          missedDates: workOrder.missedDates
+            ? workOrder.missedDates.join(", ")
+            : "N/A",
           sweepingSubs: groupName,
         });
       });

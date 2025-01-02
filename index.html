@@ -79,7 +79,7 @@
       <button type="submit" onclick="addPhotos()">Upload Photos</button>
     </form>
 
-    <h1>Snow Checker</h1>
+    <!-- <h1>Snow Checker</h1>
 
     <form id="snowForm">
       <label for="snowIds">Enter Work Order Numbers :</label>
@@ -92,9 +92,9 @@
       <label for="photoCheck">Enter Work Order Numbers</label>
       <input type="text" id="photoIds" required />
       <button type="button" onclick="photoCheck()">Check Photos</button>
-    </form>
+    </form> -->
 
-    <h1>Upload Excel File to Generate Emails</h1>
+    <!-- <h1>Upload Excel File to Generate Emails</h1>
     <form id="generateEmailForm">
       <input type="file" name="excelFile" required />
       <button type="submit" onClick="generateEmail()">Generate Emails</button>
@@ -102,7 +102,7 @@
     </form>
 
     <h2>Generated Emails:</h2>
-    <ul id="fileList"></ul>
+    <ul id="fileList"></ul> -->
 
     <script>
       function submitForm() {
@@ -262,7 +262,7 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("/days_missed", {
+          const response = await fetch("http://localhost:5000/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
