@@ -62,74 +62,83 @@ if (!fs.existsSync(uploadDir)) {
 app.post("/newWO", async (req, res) => {
   const sigHeaderName = "Sign-Data";
   const sigHashAlg = "sha256";
-
   const secret = process.env.SIGNINGKEY;
 
-  //Validate payload
-  if (req.get(sigHeaderName)) {
-    //Extract Signature header
-    console.log(req.get(sigHeaderName), "req.get(sigHeaderName");
-    const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
-    console.log(req.rawBody, "req.rawBody");
-    //Calculate HMAC
-    console.log(sigHashAlg, "sigHashAlg");
-    console.log(secret, "secret");
-    const hmac = createHmac(sigHashAlg, secret);
-    const digest = Buffer.from(
-      hmac.update(req.rawBody).digest("base64"),
-      "utf8"
-    );
-    console.log(sigHeaderName, "Sig Header Name");
-    console.log(sig, "Sig ");
-    console.log(digest, "digest");
-    //Compare HMACs
-    if (sig.length !== digest.length || !timingSafeEqual(digest, sig)) {
-      return res.status(401).send({
-        message: `Request body digest (${digest}) did not match ${sigHeaderName} (${sig})`,
-      });
-    }
-  }
   try {
-    const accessToken = await getAccessToken();
-    const workOrder = req.body.Object; // Access the Object field in the request body
+    // Validate payload signature
+    if (req.get(sigHeaderName)) {
+      const sig = Buffer.from(req.get(sigHeaderName) || "", "utf8");
+      const hmac = createHmac(sigHashAlg, secret);
+      const digest = Buffer.from(
+        hmac.update(req.rawBody).digest("base64"),
+        "utf8"
+      );
 
-    if (!workOrder || !workOrder.Id || !workOrder.CallDate_DTO) {
-      return res.status(400).send("Invalid work order data.");
-    }
-    await axios.put(
-      `https://api.servicechannel.com/v3/workorders/${workOrder.Id}/accept`,
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
+      if (sig.length !== digest.length || !timingSafeEqual(digest, sig)) {
+        return res.status(401).send({
+          message: `Request body digest (${digest}) did not match ${sigHeaderName} (${sig})`,
+        });
       }
-    );
-    const creationDate = new Date(workOrder.CallDate_DTO);
-    const newScheduledDate = new Date(creationDate);
-    newScheduledDate.setDate(newScheduledDate.getDate() + 7);
+    }
 
-    // Prepare the update payload
-    const updatePayload = {
-      Value: newScheduledDate.toISOString(), // New scheduled date in ISO format
-      Actor: "Jonah Daigle",
-    };
+    // Extract the work order from the payload
+    const workOrder = req.body.Object;
+    await acceptWorkOrder(workOrder);
+    // Call the helper function to update the scheduled date
+    await updateWorkOrderScheduledDate(workOrder);
 
-    const updateEndpoint = `https://api.servicechannel.com/v3/workorders/${workOrder.Id}`;
-
-    const apiResponse = await axios.put(updateEndpoint, updatePayload, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`, // API authentication token
-      },
-    });
-    console.log("Work order updated:", apiResponse.data);
+    // Respond to the webhook sender
     res.status(200).send("Work order scheduled date updated successfully.");
   } catch (error) {
-    console.error("Error updating work order:", error.message);
-    res.status(500).send("Error updating work order.");
+    console.error("Error processing webhook:", error.message);
+    res.status(500).send("Error processing webhook.");
   }
 });
+
+const acceptWorkOrder = async (workOrder) => {
+  const accessToken = await getAccessToken();
+  await axios.put(
+    `https://api.servicechannel.com/v3/workOrders/${workOrder.Id}/accept`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+};
+
+const updateWorkOrderScheduledDate = async (workOrder) => {
+  if (!workOrder || !workOrder.Id || !workOrder.CallDate_DTO) {
+    throw new Error("Invalid work order data.");
+  }
+  const accessToken = await getAccessToken();
+
+  // Calculate the new scheduled date (1 week from creation date)
+  const creationDate = new Date(workOrder.CallDate_DTO);
+  const newScheduledDate = new Date(creationDate);
+  newScheduledDate.setDate(newScheduledDate.getDate() + 7);
+
+  // Prepare the update payload
+  const updatePayload = {
+    Value: newScheduledDate.toISOString(),
+    Actor: "Jonah Daigle",
+  };
+
+  // Send the update to the API
+  const updateEndpoint = `https://api.servicechannel.com/v3/workOrders/${workOrder.Id}`;
+
+  const response = await axios.put(updateEndpoint, updatePayload, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  console.log("Work order updated:", response.data);
+
+  return response.data; // Return response or relevant data
+};
 
 const generateEml = (emailContent) => {
   return new Promise((resolve, reject) => {
