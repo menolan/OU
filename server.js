@@ -98,7 +98,6 @@ app.post("/newWO", async (req, res) => {
     }
     await axios.put(
       `https://api.servicechannel.com/v3/workorders/${workOrder.Id}/accept`,
-      {},
       {
         headers: {
           "Content-Type": "application/json",
@@ -130,7 +129,6 @@ app.post("/newWO", async (req, res) => {
     console.error("Error updating work order:", error.message);
     res.status(500).send("Error updating work order.");
   }
-  return res.status(200).json({});
 });
 
 const generateEml = (emailContent) => {
