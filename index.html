@@ -85,8 +85,8 @@
       <label for="snowIds">Enter Work Order Numbers :</label>
       <input type="text" id="snowIds" required />
       <button type="button" onclick="checkSnow()">Check Snow</button>
-    </form>
-
+    </form> -->
+<!-- 
     <h1>Photo Duplicates Check</h1>
     <form id="photoForm">
       <label for="photoCheck">Enter Work Order Numbers</label>
@@ -262,7 +262,7 @@
 
       async function checkMissedCheckIns() {
         try {
-          const response = await fetch("/days_missed", {
+          const response = await fetch("http://localhost:5000/days_missed", {
             method: "GET",
             headers: {
               "Content-Type": "application/json",

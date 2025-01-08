@@ -1,23 +1,25 @@
-const {getData} = require("./getData")
+const { getData } = require("./getData");
 const axios = require("axios");
-
 
 // Function to count missed days for check-ins for a list of work orders
 async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
   // Ensure daysOfWeekNum is an array of numbers
   if (!Array.isArray(daysOfWeekNum) || daysOfWeekNum.some(isNaN)) {
-    throw new Error('daysOfWeekNum must be an array of numbers');
+    throw new Error("daysOfWeekNum must be an array of numbers");
   }
 
   // Validate missedDaysId and accessToken
   if (!missedDaysId) {
-    throw new Error('missedDaysId is required');
+    throw new Error("missedDaysId is required");
   }
   if (!accessToken) {
-    throw new Error('accessToken is required');
+    throw new Error("accessToken is required");
   }
 
-  const workOrderCheckIns = await fetchCheckInsForWorkOrder(missedDaysId, accessToken);
+  const workOrderCheckIns = await fetchCheckInsForWorkOrder(
+    missedDaysId,
+    accessToken
+  );
 
   async function fetchCheckInsForWorkOrder(missedDaysId, accessToken) {
     try {
@@ -32,7 +34,8 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
       );
 
       if (response.status === 200) {
-        // Return the check-in data as an array
+        // Return the check-in data as an
+        // array
         return response.data.value; // Assuming 'value' contains the check-in entries
       } else {
         throw new Error(
@@ -54,7 +57,8 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
 
   const dates = getDatesForDaysOfWeek(daysOfWeekNum);
   const checkIns = findCheckIns(workOrderCheckIns);
-  const { missedCheckIns, successfulCheckIns } = findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude);
+  const { missedCheckIns, successfulCheckIns } =
+    findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude);
 
   const result = {
     workOrderId: missedDaysId,
@@ -67,7 +71,7 @@ async function daysMissed(missedDaysId, daysOfWeekNum, accessToken) {
 
 function getDatesForDaysOfWeek(daysOfWeekNum) {
   const currentDate = new Date();
-  const startDate = new Date(currentDate.getFullYear(), 11, 22);
+  const startDate = new Date(currentDate.getFullYear() - 1, 10, 25);
 
   const dates = [];
 
@@ -91,7 +95,7 @@ function extractCoordinates(callerId) {
   if (match) {
     return {
       latitude: parseFloat(match[1]),
-      longitude: parseFloat(match[2])
+      longitude: parseFloat(match[2]),
     };
   }
   return null; // Or you can throw an error if the format is always expected to be correct
@@ -103,14 +107,15 @@ function findCheckIns(workOrderCheckIns) {
   for (const entry of workOrderCheckIns) {
     if (entry.Action === "Check In" || entry.Action === "Check Out") {
       let coordinates = null;
-      if (entry.Type !== "IVR" && entry.CallerId) {
+      if (entry.Dnis !== "IVR" && entry.CallerId) {
         coordinates = extractCoordinates(entry.CallerId);
       }
+
       const checkInDate = new Date(entry.Date);
       checkIns.push({
         Date: checkInDate,
         Action: entry.Action,
-        Type: entry.Type,
+        Type: entry.Dnis,
         Latitude: coordinates ? coordinates.latitude : null,
         Longitude: coordinates ? coordinates.longitude : null,
       });
@@ -120,10 +125,16 @@ function findCheckIns(workOrderCheckIns) {
   return checkIns;
 }
 
-function findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongitude) {
+function findMissedAndSuccessfulCheckIns(
+  dates,
+  checkIns,
+  locLatitude,
+  locLongitude
+) {
   const successfulCheckIns = [];
   const missedCheckIns = [];
-
+  console.log(locLatitude, locLongitude);
+  console.log(dates)
   for (const date of dates) {
     const formattedDate = `${date.getMonth() + 1}/${date.getDate()}`; // Format as "MM/DD"
 
@@ -135,23 +146,28 @@ function findMissedAndSuccessfulCheckIns(dates, checkIns, locLatitude, locLongit
     priorDayEnd.setHours(16, 0, 0, 0); // 4 PM of the previous day
 
     // Find all check-ins within the time window
-    const checkInsInWindow = checkIns.filter(checkIn => 
-      checkIn.Date >= priorDayEnd && checkIn.Date < dayStart && checkIn.Action === "Check In"
+    const checkInsInWindow = checkIns.filter(
+      (checkIn) =>
+        checkIn.Date >= priorDayEnd &&
+        checkIn.Date < dayStart &&
+        checkIn.Action === "Check In"
     );
 
     if (checkInsInWindow.length > 0) {
       // Check if there's any check-in with matching coordinates
-      const matchingCoordinatesCheckIn = checkInsInWindow.find(checkIn => 
-        checkIn.Type !== "IVR" && 
-        checkIn.Latitude === locLatitude && 
-        checkIn.Longitude === locLongitude
+      const matchingCoordinatesCheckIn = checkInsInWindow.find(
+        (checkIn) =>
+          checkIn.Type !== "IVR" &&
+          checkIn.Latitude === locLatitude &&
+          checkIn.Longitude === locLongitude
       );
 
       // Check if there's any check-in with non-matching coordinates
-      const nonMatchingCoordinatesCheckIn = checkInsInWindow.find(checkIn => 
-        checkIn.Type === "IVR" || 
-        checkIn.Latitude !== locLatitude || 
-        checkIn.Longitude !== locLongitude
+      const nonMatchingCoordinatesCheckIn = checkInsInWindow.find(
+        (checkIn) =>
+          checkIn.Type === "IVR" ||
+          checkIn.Latitude !== locLatitude ||
+          checkIn.Longitude !== locLongitude
       );
 
       if (nonMatchingCoordinatesCheckIn) {

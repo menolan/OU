@@ -89,41 +89,38 @@ app.post("/newWO", async (req, res) => {
       });
     }
   }
-  // try {
-  //   const workOrder = req.body.Object; // Access the Object field in the request body
+  try {
+    const accessToken = await getAccessToken();
+    const workOrder = req.body.Object; // Access the Object field in the request body
 
-  //   const values = [
-  //     [
-  //       workOrder.Id, // Work Order ID
-  //       workOrder.Number, // Work Order Number
-  //       workOrder.Status.Primary, // Work Order Status
-  //       workOrder.CreatedBy, // Created By
-  //       workOrder.CallDate_DTO, // Call Date
-  //       workOrder.Trade, // Trade
-  //       workOrder.ScheduledDate_DTO, // Scheduled Date
-  //       workOrder.Description, // Description
-  //       workOrder.Category, // Category
-  //       workOrder.Source, // Source
-  //     ],
-  //   ];
+    if (!workOrder || !workOrder.Id || !workOrder.CallDate_DTO) {
+      return res.status(400).send("Invalid work order data.");
+    }
 
-  //   const resource = {
-  //     values,
-  //   };
+    const creationDate = new Date(workOrder.CallDate_DTO);
+    const newScheduledDate = new Date(creationDate);
+    newScheduledDate.setDate(newScheduledDate.getDate() + 7);
 
-  //   const result = await sheets.spreadsheets.values.append({
-  //     spreadsheetId,
-  //     range: "Sheet1!A2", // Adjust to your specific sheet name and range
-  //     valueInputOption: "RAW",
-  //     resource,
-  //   });
+    // Prepare the update payload
+    const updatePayload = {
+      Value: newScheduledDate.toISOString(), // New scheduled date in ISO format
+      Actor: "Jonah Daigle",
+    };
 
-  //   console.log(`Appended: ${result.data.updates.updatedRange}`);
-  //   res.status(200).send("Work order added to Google Sheet.");
-  // } catch (error) {
-  //   console.error("Error appending to Google Sheets:", error);
-  //   res.status(500).send("Error adding work order to Google Sheet.");
-  // }
+    const updateEndpoint = `https://api.servicechannel.com/v3/workorders/${workOrder.Id}`;
+
+    const apiResponse = await axios.put(updateEndpoint, updatePayload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`, // API authentication token
+      },
+    });
+    console.log("Work order updated:", apiResponse.data);
+    res.status(200).send("Work order scheduled date updated successfully.");
+  } catch (error) {
+    console.error("Error updating work order:", error.message);
+    res.status(500).send("Error updating work order.");
+  }
   return res.status(200).json({});
 });
 
@@ -766,12 +763,16 @@ app.get("/days_missed", async (req, res) => {
       throw new Error("The $CREDS environment variable was not found!");
     }
     const keys = JSON.parse(keysEnvVar);
-
+    const headers = {
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    };
     // load the JWT or UserRefreshClient from the keys
     const client = auth.fromJSON(keys);
     client.scopes = ["https://www.googleapis.com/auth/spreadsheets"];
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=N2%3AN148&ranges=E2%3AE148&ranges=J2%3AJ148&valueRenderOption=FORMATTED_VALUE&key=${process.env.API_KEY}`;
-    const data = await client.request({ url });
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchGet?ranges=O2%3AO148&ranges=E2%3AE148&ranges=J2%3AJ148&valueRenderOption=FORMATTED_VALUE&key=${process.env.API_KEY}`;
+    const data = await client.request({ url, headers });
 
     // Check if valueRanges exists and has expected data
     const missedDaysIds = data.data.valueRanges?.[0]?.values || [];
@@ -798,7 +799,6 @@ app.get("/days_missed", async (req, res) => {
 
       groups[sweepingSubs].push({ missedDaysId, daysOfWeek });
     }
-    console.log("Groups formed:", groups);
     const accessToken = await getAccessToken();
 
     const chunkSize = 50; // Process 50 work orders at a time
@@ -812,7 +812,7 @@ app.get("/days_missed", async (req, res) => {
     );
 
     console.log("Starting Excel file creation...");
-    console.log("Group Results:", JSON.stringify(groupResults, null, 2));
+
     // Create a new Excel workbook and worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Missed Dates");
@@ -832,7 +832,12 @@ app.get("/days_missed", async (req, res) => {
 
     // Populate the worksheet with data
     Object.entries(groupResults).forEach(([groupName, workOrders]) => {
-      workOrders.forEach((workOrder) => {
+      console.log(`Processing group: ${groupName}`);
+      workOrders.forEach((workOrder, index) => {
+        console.log(
+          `Work Order [${index}]:`,
+          JSON.stringify(workOrder, null, 2)
+        );
         worksheet.addRow({
           workOrderId: workOrder.workOrderId,
           totalExpectedCheckIns: workOrder.totalExpectedCheckIns,
