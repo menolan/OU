@@ -96,16 +96,25 @@ app.post("/newWO", async (req, res) => {
 });
 
 const acceptWorkOrder = async (workOrder) => {
-  const accessToken = await getAccessToken();
-  await axios.put(
-    `https://api.servicechannel.com/v3/workOrders/${workOrder.Id}/accept`,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  );
+  const accessToken = await getAccessToken(); // Assuming this function retrieves a valid access token
+
+  try {
+    const response = await axios.put(
+      `https://api.servicechannel.com/v3/workOrders/${workOrder.Id}/accept`,
+      null, // No body payload for this request
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    console.log("Work order accepted:", response.data);
+  } catch (error) {
+    console.error("Error accepting work order:", error.message);
+    throw error; // Rethrow the error so it can be handled by the calling function
+  }
 };
 
 const updateWorkOrderScheduledDate = async (workOrder) => {
