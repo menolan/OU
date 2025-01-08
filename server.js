@@ -96,7 +96,16 @@ app.post("/newWO", async (req, res) => {
     if (!workOrder || !workOrder.Id || !workOrder.CallDate_DTO) {
       return res.status(400).send("Invalid work order data.");
     }
-
+    await axios.put(
+      `https://api.servicechannel.com/v3/workorders/${workOrder.Id}/accept`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
     const creationDate = new Date(workOrder.CallDate_DTO);
     const newScheduledDate = new Date(creationDate);
     newScheduledDate.setDate(newScheduledDate.getDate() + 7);
