@@ -136,16 +136,28 @@ const updateWorkOrderScheduledDate = async (workOrder) => {
   // Send the update to the API
   const updateEndpoint = `https://api.servicechannel.com/v3/workOrders/${workOrder.Id}`;
 
-  const response = await axios.put(updateEndpoint, updatePayload, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  try {
+    const response = await axios.put(updateEndpoint, updatePayload, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    console.log("Scheduled date updated successfully:", response.data);
+  } catch (error) {
+    if (error.response) {
+      const { ErrorCodes, ErrorCode, ErrorMessage } = error.response.data || {};
 
-  console.log("Work order updated:", response.data);
+      console.error("Error updating scheduled date:");
+      console.error("Error Codes:", ErrorCodes || "N/A");
+      console.error("Error Code:", ErrorCode || "N/A");
+      console.error("Error Message:", ErrorMessage || "N/A");
+    } else {
+      console.error("Unexpected error:", error.message);
+    }
 
-  return response.data; // Return response or relevant data
+    throw error; // Rethrow error for proper handling in the calling function
+  }
 };
 
 const generateEml = (emailContent) => {
