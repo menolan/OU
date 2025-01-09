@@ -81,11 +81,10 @@ app.post("/newWO", async (req, res) => {
       }
     }
 
-    // Extract the work order from the payload
     const workOrder = req.body.Object;
     await acceptWorkOrder(workOrder);
     // Call the helper function to update the scheduled date
-    // await updateWorkOrderScheduledDate(workOrder);
+    await updateWorkOrderScheduledDate(workOrder);
 
     // Respond to the webhook sender
     res.status(200).send("Work order scheduled date updated successfully.");
